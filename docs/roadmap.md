@@ -30,7 +30,9 @@
 **Includes:**
 - `docs/product-requirements.md`
 - `docs/roadmap.md`
-- feature specifications under `specs/features/`
+- `docs/user-flows.md`
+- `docs/backlog.md`
+- feature specifications under `specs/`
 
 **Exit criteria:**
 - confirmed requirements are distinguished from assumptions and deferred items;
