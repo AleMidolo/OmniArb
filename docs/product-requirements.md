@@ -1,11 +1,11 @@
 # OmniArb — Product Requirements
 
 **Document owner:** Project Manager / Product Owner  
-**Status:** Approved product baseline — ready for architecture  
+**Status:** Approved product baseline — architecture aligned; M2 handoff active  
 **Initial market:** Italy  
 **Initial language:** Italian only  
 **Product type:** B2C subscription service  
-**Last product-decision review:** 2026-09-01
+**Last product-decision review:** 2026-09-02
 
 ---
 
@@ -541,14 +541,24 @@ The following are not blockers for architecture of the MVP unless an architectur
 
 ---
 
-## 23. Definition of product readiness for architecture
+## 23. Product handoff status
 
-The product specification is ready for architecture when:
+The architecture baseline and ADRs are approved in `docs/architecture.md` and
+`docs/decisions/`. Product requirements remain authoritative if a conflict is
+found.
 
-- the Architect can design the public site without inventing marketing scope;
-- the Architect can design the subscription/entitlement lifecycle from the rules above;
-- the Architect understands that the existing Telegram service is an external dependency;
-- unresolved technical choices remain explicitly technical rather than hidden product ambiguities;
-- legal/seller details are identified as commercial-launch blockers rather than fabricated.
+The current delivery state is:
 
-**Status: READY FOR ARCHITECTURE**
+- M0 product baseline: complete;
+- M1 architecture baseline: complete;
+- OMNI-002 informational website in `PRE_LAUNCH`: ready for development;
+- OMNI-003 through OMNI-005 commercial lifecycle: product-defined and
+  architecture-designed, but blocked until commercial/legal and external
+  Telegram prerequisites are satisfied;
+- OMNI-008 commercial launch: blocked until every M6 gate passes.
+
+Implementation sequencing and acceptance criteria are maintained in
+`docs/backlog.md`. End-to-end customer journeys are maintained in
+`docs/user-flows.md`.
+
+**Status: ARCHITECTURE ALIGNED — OMNI-002 / PRE-LAUNCH READY FOR DEVELOPMENT**
