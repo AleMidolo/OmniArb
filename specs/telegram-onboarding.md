@@ -1,7 +1,7 @@
 # Feature Specification — OMNI-005 Telegram Identity and Customer Onboarding
 
 **Priority:** P0  
-**Status:** READY FOR ARCHITECTURE
+**Status:** ARCHITECTURE COMPLETE — EXTERNAL CAPABILITY VERIFICATION BLOCKED
 
 ---
 
@@ -165,4 +165,4 @@ If this is not currently possible, commercial launch remains blocked.
 - Revocation implementation.
 - Exact support/admin tooling.
 
-**READY FOR ARCHITECTURE**
+**ARCHITECTURE COMPLETE — BLOCKED PENDING TELEGRAM CAPABILITY VERIFICATION**

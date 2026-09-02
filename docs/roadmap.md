@@ -1,7 +1,7 @@
 # OmniArb — Product Roadmap
 
 **Owner:** Project Manager / Product Owner  
-**Status:** Approved initial roadmap  
+**Status:** Active — M0/M1 complete; M2 is the current delivery milestone  
 **Scope:** Italian MVP, Italy-only B2C launch
 
 ---
@@ -30,7 +30,9 @@
 **Includes:**
 - `docs/product-requirements.md`
 - `docs/roadmap.md`
-- feature specifications under `specs/features/`
+- `docs/user-flows.md`
+- `docs/backlog.md`
+- feature specifications under `specs/`
 
 **Exit criteria:**
 - confirmed requirements are distinguished from assumptions and deferred items;
@@ -38,7 +40,7 @@
 - Telegram/bot scope boundary is explicit;
 - feature dependencies are recorded.
 
-**Status:** Ready to commit.
+**Status:** COMPLETE — merged into `main`.
 
 ---
 
@@ -69,7 +71,8 @@
 - external Telegram-service prerequisites are explicit;
 - no unresolved product decision is silently converted into a technical assumption.
 
-**Dependency:** M0.
+**Dependency:** M0.  
+**Status:** COMPLETE — architecture baseline and ADRs merged via PR #1.
 
 ---
 
@@ -96,7 +99,8 @@
 - no live subscription path is reachable;
 - claims comply with the approved product wording rules.
 
-**Dependencies:** M1.
+**Dependencies:** M1.  
+**Status:** READY FOR DEVELOPMENT — `PRE_LAUNCH` only.
 
 ---
 
@@ -120,7 +124,8 @@
 - Architect confirms Telegram fulfillment dependency is technically ready;
 - QA has testable environments/data for billing and onboarding.
 
-**Dependencies:** M1. Can progress in parallel with M2.
+**Dependencies:** M1. Can progress in parallel with M2.  
+**Status:** BLOCKED — product-owner, legal and external-service inputs remain open.
 
 ---
 
@@ -145,7 +150,8 @@
 - unauthorized users cannot create entitlement through frontend manipulation;
 - lifecycle edge cases are verified by QA.
 
-**Dependencies:** M1 and relevant items from M3.
+**Dependencies:** M1 and relevant items from M3.  
+**Status:** BLOCKED — M3 prerequisites and commercial test readiness required.
 
 ---
 
@@ -170,7 +176,8 @@
 - manual fallback is tested;
 - access lifecycle aligns with billing lifecycle.
 
-**Dependencies:** M3 and M4.
+**Dependencies:** M3 and M4.  
+**Status:** BLOCKED — external Telegram provisioning contract is not yet verified.
 
 ---
 
@@ -196,6 +203,8 @@
 **Commercial state change:**
 - Replace `Prossimamente` CTA with active trial CTA only after the launch gate is satisfied.
 
+**Status:** BLOCKED — all launch-gate items remain mandatory.
+
 ---
 
 ### M7 — Post-launch validation
@@ -213,6 +222,8 @@
 - refund requests;
 - support volume.
 
+**Status:** NOT STARTED.
+
 **Possible future decisions, not pre-approved features:**
 - English localization;
 - expansion beyond Italy;
@@ -229,18 +240,21 @@
 
 ---
 
-## 3. Initial feature backlog
+## 3. Feature backlog summary
 
-| ID | Title | Priority | Milestone | Dependencies | Status |
-|---|---|---:|---|---|---|
-| OMNI-001 | Persist product baseline documentation | P0 | M0 | None | READY |
-| OMNI-002 | Italian conversion-focused showcase landing page | P0 | M2 | OMNI-001, architecture baseline | READY FOR ARCHITECTURE |
-| OMNI-003 | Subscription and trial lifecycle | P0 | M4 | OMNI-001, architecture baseline, commercial prerequisites | READY FOR ARCHITECTURE |
-| OMNI-004 | Stripe checkout and subscription management | P0 | M4 | OMNI-003 | READY FOR ARCHITECTURE |
-| OMNI-005 | Telegram identity and customer onboarding | P0 | M5 | OMNI-003, OMNI-004, external Telegram readiness | READY FOR ARCHITECTURE |
-| OMNI-006 | Legal, trust, eligibility and risk presentation | P0 | M2/M3/M6 | OMNI-001, legal review for commercial activation | READY FOR ARCHITECTURE |
-| OMNI-007 | Minimal conversion analytics | P1 | M2/M6 | architecture baseline, privacy review | READY FOR ARCHITECTURE |
-| OMNI-008 | Commercial launch gate | P0 | M6 | OMNI-002 through OMNI-007 as applicable | BLOCKED until prerequisites pass |
+Detailed, independently testable work packages and current dependencies are
+maintained in `docs/backlog.md`.
+
+| ID | Title | Priority | Milestone | Status |
+|---|---|---:|---|---|
+| OMNI-001 | Persist product baseline documentation | P0 | M0 | COMPLETE |
+| OMNI-002 | Italian conversion-focused showcase landing page | P0 | M2 | READY FOR DEVELOPMENT — `PRE_LAUNCH` |
+| OMNI-003 | Subscription and trial lifecycle | P0 | M4 | BLOCKED — M3 and Telegram contract |
+| OMNI-004 | Stripe checkout and subscription management | P0 | M4 | BLOCKED — OMNI-003 and seller/Stripe readiness |
+| OMNI-005 | Telegram identity and customer onboarding | P0 | M5 | BLOCKED — external Telegram readiness |
+| OMNI-006 | Legal, trust, eligibility and risk presentation | P0 | M2/M3/M6 | PRE-LAUNCH READY; COMMERCIAL BLOCKED |
+| OMNI-007 | Minimal conversion analytics | P1 | M2/M6 | ADAPTER READY; ENABLEMENT BLOCKED |
+| OMNI-008 | Commercial launch gate | P0 | M6 | BLOCKED until all prerequisites pass |
 
 ---
 
@@ -320,16 +334,33 @@ No task should be created automatically for the following without a new PM decis
 
 ---
 
-## 7. Architect handoff
+## 7. Developer handoff
 
-The next owner is the **Software Architect**.
+The architecture baseline is complete. The next implementation owner is the
+**Developer**, beginning with OMNI-002 in `PRE_LAUNCH` mode.
 
-The Architect should produce a technical design that satisfies OMNI-002 through OMNI-007 and clearly identifies any external change required in the existing Telegram service.
+The current developer-ready packages are:
 
-The Architect must not:
-- redesign the product into a web dashboard;
+- OMNI-002A through OMNI-002E;
+- OMNI-007A, implemented as a provider-neutral adapter that remains disabled by
+  default.
+
+OMNI-002F and OMNI-002G follow within the same M2 increment after their listed
+dependencies. See `docs/backlog.md` for acceptance criteria and
+`docs/user-flows.md` for journey-level behavior.
+
+The Developer must not:
+
+- introduce a web dashboard or password account;
 - reimplement the arbitrage algorithm;
-- enable payments before the launch gates;
-- replace product rules with easier technical alternatives without PM approval.
+- enable checkout, payment collection or Telegram commercial provisioning in
+  `PRE_LAUNCH`;
+- fabricate seller/legal details, testimonials, screenshots or performance
+  evidence;
+- add English localization, an interactive calculator or a waiting list.
 
-**READY FOR ARCHITECTURE**
+OMNI-003 through OMNI-005 remain blocked for production implementation until the
+external Telegram provisioning contract and M3 commercial prerequisites are
+verified.
+
+**READY FOR DEVELOPMENT — OMNI-002 / PRE-LAUNCH WEBSITE**

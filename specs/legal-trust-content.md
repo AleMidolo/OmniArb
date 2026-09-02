@@ -1,7 +1,7 @@
 # Feature Specification — OMNI-006 Legal, Trust, Eligibility and Risk Content
 
 **Priority:** P0  
-**Status:** READY FOR ARCHITECTURE  
+**Status:** READY FOR PRE-LAUNCH IMPLEMENTATION; COMMERCIAL CONTENT BLOCKED  
 **Note:** This is a product specification, not legal advice. Final commercial copy requires appropriate legal/privacy review.
 
 ---
@@ -188,4 +188,4 @@ Product requirements must be adapted if legal review determines that a planned p
 - Privacy retention periods.
 - Tax/accounting configuration.
 
-**READY FOR ARCHITECTURE**
+**PRE-LAUNCH CONTENT READY; COMMERCIAL ACTIVATION BLOCKED PENDING LEGAL REVIEW**
