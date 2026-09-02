@@ -2,7 +2,7 @@
 
 **Priority:** P0  
 **Owner of WHAT:** Project Manager / Product Owner  
-**Status:** READY FOR ARCHITECTURE
+**Status:** READY FOR DEVELOPMENT — PRE_LAUNCH
 
 ---
 
@@ -204,4 +204,4 @@ Provider, consent model and event implementation belong to architecture/privacy 
 - Customer dashboard.
 - Advertising/retargeting.
 
-**READY FOR ARCHITECTURE**
+**READY FOR DEVELOPMENT — PRE_LAUNCH WEBSITE**
