@@ -1,7 +1,7 @@
 # Feature Specification — OMNI-003 Subscription and Trial Lifecycle
 
 **Priority:** P0  
-**Status:** READY FOR ARCHITECTURE
+**Status:** ARCHITECTURE COMPLETE — COMMERCIAL IMPLEMENTATION BLOCKED
 
 ---
 
@@ -161,4 +161,4 @@ No trial may be activated until:
 - Loyalty offers.
 - A second free trial after any cooldown period.
 
-**READY FOR ARCHITECTURE**
+**ARCHITECTURE COMPLETE — BLOCKED PENDING COMMERCIAL PREREQUISITES**
