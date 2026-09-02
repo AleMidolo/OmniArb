@@ -1,7 +1,7 @@
 # Feature Specification — OMNI-004 Stripe Checkout and Subscription Management
 
 **Priority:** P0  
-**Status:** READY FOR ARCHITECTURE
+**Status:** ARCHITECTURE COMPLETE — COMMERCIAL IMPLEMENTATION BLOCKED
 
 ---
 
@@ -150,4 +150,4 @@ Final legal wording requires review before commercial launch.
 - Coupons/promotions.
 - Annual billing.
 
-**READY FOR ARCHITECTURE**
+**ARCHITECTURE COMPLETE — BLOCKED PENDING COMMERCIAL PREREQUISITES**
