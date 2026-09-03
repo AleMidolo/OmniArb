@@ -1,0 +1,164 @@
+name: Cloudflare Workers
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OMNIARB_MODE: PRE_LAUNCH
+  VINEXT_VERSION: 1.0.0-beta.9
+  VINEXT_CLOUDFLARE_VERSION: 1.0.0-beta.7
+  CLOUDFLARE_VITE_PLUGIN_VERSION: 1.31.0
+  VITE_VERSION: 8.0.0
+  VITE_RSC_VERSION: 0.5.34
+  REACT_SERVER_DOM_WEBPACK_VERSION: 19.2.8
+  WRANGLER_VERSION: 4.80.0
+
+jobs:
+  worker-validate:
+    name: vinext check, build, Worker smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Cloudflare migration toolchain
+        run: >-
+          npm install --no-save --no-package-lock
+          vinext@${VINEXT_VERSION}
+          @vinext/cloudflare@${VINEXT_CLOUDFLARE_VERSION}
+          @cloudflare/vite-plugin@${CLOUDFLARE_VITE_PLUGIN_VERSION}
+          vite@${VITE_VERSION}
+          @vitejs/plugin-rsc@${VITE_RSC_VERSION}
+          react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
+          wrangler@${WRANGLER_VERSION}
+
+      - name: vinext compatibility check
+        run: npx vinext check | tee vinext-check.txt
+
+      - name: vinext production build
+        run: npx vinext build
+
+      - name: Record Worker bundle size
+        run: |
+          test -d dist/server
+          du -sh dist/server | tee worker-size.txt
+          find dist/server -type f -printf '%s %p\n' | sort -nr | head -20 >> worker-size.txt
+          cat worker-size.txt
+
+      - name: Local Worker runtime smoke tests
+        run: bash scripts/cloudflare-smoke.sh
+
+      - name: Upload compatibility evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-compatibility
+          path: |
+            vinext-check.txt
+            worker-size.txt
+          retention-days: 14
+
+  deploy-main:
+    name: Deploy stable PRE_LAUNCH Worker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: worker-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pre-launch
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Cloudflare migration toolchain
+        run: >-
+          npm install --no-save --no-package-lock
+          vinext@${VINEXT_VERSION}
+          @vinext/cloudflare@${VINEXT_CLOUDFLARE_VERSION}
+          @cloudflare/vite-plugin@${CLOUDFLARE_VITE_PLUGIN_VERSION}
+          vite@${VITE_VERSION}
+          @vitejs/plugin-rsc@${VITE_RSC_VERSION}
+          react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
+          wrangler@${WRANGLER_VERSION}
+
+      - name: Build Worker
+        run: npx vinext build
+
+      - name: Deploy stable Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy --config dist/server/wrangler.json
+
+  deploy-pr-preview:
+    name: Upload PR preview Worker
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: worker-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pre-launch
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Cloudflare migration toolchain
+        run: >-
+          npm install --no-save --no-package-lock
+          vinext@${VINEXT_VERSION}
+          @vinext/cloudflare@${VINEXT_CLOUDFLARE_VERSION}
+          @cloudflare/vite-plugin@${CLOUDFLARE_VITE_PLUGIN_VERSION}
+          vite@${VITE_VERSION}
+          @vitejs/plugin-rsc@${VITE_RSC_VERSION}
+          react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
+          wrangler@${WRANGLER_VERSION}
+
+      - name: Build Worker
+        run: npx vinext build
+
+      - name: Upload version with stable PR alias
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: >-
+          npx wrangler versions upload
+          --config dist/server/wrangler.json
+          --preview-alias pr-${{ github.event.pull_request.number }}
