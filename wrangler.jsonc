@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "omniarb-prelaunch",
-  "compatibility_date": "2026-09-03",
+  "compatibility_date": "2026-04-08",
   "compatibility_flags": ["nodejs_compat"],
   "main": "vinext/server/fetch-handler",
   "assets": {
