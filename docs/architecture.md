@@ -302,6 +302,7 @@ defined in `docs/data-model.md`.
 |---|---|
 | `Customer` | internal ID, normalized email, Telegram numeric ID, Stripe customer ID, timestamps |
 | `TrialGrant` | customer/identity keys, consumed timestamp, source, support override audit data if applicable |
+| `BillingSetup` | customer/flow, stable operation key, Checkout Session, SetupIntent and PaymentMethod correlations, verified status and timestamps |
 | `BillingSubscription` | customer, Stripe subscription ID, provider status, trial/period boundaries, cancellation and first-payment timestamps |
 | `Entitlement` | customer, status, `serviceAvailableAt`, `validUntil`, `graceUntil`, revocation/suspension timestamps |
 | `TelegramLink` | token hash, expiry, consumption timestamp, linked Telegram ID |
@@ -358,7 +359,18 @@ interface TelegramProvisioningService {
     customerId: string;
     telegramUserId: string;
     idempotencyKey: string;
-  }): Promise<{ status: "provisioned" | "already_provisioned" }>;
+  }): Promise<
+    | {
+        status: "provisioned" | "already_provisioned";
+        availableAt: string;
+      }
+    | { status: "pending_confirmation"; reference: string }
+  >;
+
+  verifyAccess(input: {
+    telegramUserId: string;
+    reference?: string;
+  }): Promise<{ available: boolean; observedAt: string }>;
 
   revokeAccess(input: {
     customerId: string;

@@ -20,8 +20,9 @@
 - State-changing browser requests require an origin check and CSRF protection.
 - Public responses use neutral wording where account enumeration is possible.
 - `PRE_LAUNCH` is checked inside every commercial command, not only middleware
-  or UI. Disabled commercial commands return `404` or a stable
-  `409 COMMERCIAL_DISABLED` according to the final route exposure policy.
+  or UI. Disabled commercial commands return `503 COMMERCIAL_DISABLED` as an
+  `application/problem+json` response with `Cache-Control: no-store`. A
+  `Retry-After` header is sent only when an honest activation time is known.
 - Redirect targets are server-configured allowlisted origins; callers cannot
   supply arbitrary success, cancel or return URLs.
 
@@ -103,6 +104,12 @@ server-side trial-eligibility check. Creates a Stripe Checkout Session in
 payment-method setup mode for the server-resolved Stripe customer. A stable
 operation key is passed as Stripe's idempotency key.
 
+Before the provider call, the server durably creates a `BillingSetup` operation.
+The price, currency, customer, return URLs and accepted reusable payment-method
+types come only from server configuration. The selected payment method must
+support future off-session recurring EUR charges; no browser-supplied Stripe
+customer, price, SetupIntent or PaymentMethod ID is trusted.
+
 Response `201`:
 
 ```json
@@ -112,6 +119,11 @@ Response `201`:
 ```
 
 The browser redirect never marks payment setup, trial or entitlement complete.
+Completion requires a verified provider event plus reconciliation showing that
+the Checkout Session is in setup mode, belongs to the expected customer, and
+references a succeeded SetupIntent whose PaymentMethod is attached to that
+customer. The Checkout Session, SetupIntent and selected PaymentMethod IDs are
+stored only as server-side provider correlations.
 
 ### `POST /api/billing/portal-link-requests`
 
@@ -149,25 +161,35 @@ Required processing order:
 2. verify `Stripe-Signature` using the environment-specific webhook secret and
    the SDK's bounded timestamp tolerance;
 3. reject invalid signatures or oversized/malformed bodies;
-4. insert/deduplicate the Stripe event ID;
-5. retrieve the current provider object when event ordering could affect the
-   decision;
-6. apply state plus outbox records transactionally;
-7. return `2xx` promptly; workers perform slow side effects.
+4. classify the event against the configured allowlist;
+5. in one short database transaction, insert/deduplicate the Stripe event ID
+   and enqueue a versioned processing outbox record containing only the
+   minimal provider object references required for reconciliation;
+6. return `2xx` once that durable acceptance commits; a duplicate that is
+   already durably accepted also receives `2xx`;
+7. in a worker, retrieve the current provider object when ordering could affect
+   the decision, apply the valid domain transition transactionally and enqueue
+   any retry-safe side effects.
+
+If durable acceptance fails, return a retryable server error rather than
+acknowledging work that can be lost. Raw provider payloads are not retained by
+default.
 
 Initial allowlist:
 
 - `checkout.session.completed` and `checkout.session.expired` for the setup
   flow;
+- `setup_intent.succeeded` and `setup_intent.setup_failed` for durable
+  payment-method readiness and asynchronous setup outcomes;
 - `customer.subscription.created`, `customer.subscription.updated` and
   `customer.subscription.deleted`;
 - `invoice.paid` and `invoice.payment_failed`;
 - refund/charge events required by the approved support refund runbook.
 
-The exact refund event set is finalized with the operational runbook. Unknown
-event types are recorded as ignored or rejected by policy and never change
-entitlement. Events may be duplicated or delivered out of order; `created`
-timestamps are not used as an ordering lock.
+The exact refund event set is finalized with the operational runbook. A validly
+signed but unconfigured event type is recorded as `IGNORED`, acknowledged with
+`2xx` and never changes entitlement. Events may be duplicated or delivered out
+of order; `created` timestamps are not used as an ordering lock.
 
 ### `POST /api/integrations/telegram/link-callback`
 
@@ -255,7 +277,7 @@ as retryable, terminal, authentication/configuration or contract violations.
 | Flow session | missing/wrong/expired cookie, cross-flow access, CSRF, concurrent request |
 | Telegram link | valid consume, expiry, replay, different user, duplicate callback, invalid service signature |
 | Stripe webhook | invalid signature, old replay signature, duplicate event ID, logical duplicate, out-of-order event, unknown type |
-| Stripe setup/subscription | retry after timeout, stable idempotency key, Telegram failure before subscription, subscription failure after provisional access |
+| Stripe setup/subscription | retry after timeout, stable idempotency key, setup-mode/customer/SetupIntent correlation, asynchronous setup success/failure, cross-customer PaymentMethod rejection, Telegram failure before subscription, subscription failure after provisional access |
 | Portal | neutral enumeration response, expired/replayed token, scanner GET, concurrent POST, fixed return URL |
 | Scheduler/worker | unauthorized invocation, duplicate invocation, lease expiry, retry exhaustion, dead-letter alert |
 | Telegram access | provision, already provisioned, pending confirmation, verify, revoke, already revoked, wrong member consumes leaked link |

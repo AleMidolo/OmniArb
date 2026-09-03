@@ -19,8 +19,11 @@ performs idempotent provider operations and records categorized outcomes.
 Scheduled reconciliation compares incomplete local workflows with current
 provider state and repairs or escalates them.
 
-Webhook handlers authenticate, persist/deduplicate and acknowledge promptly;
-they do not perform slow fulfillment or email work inline.
+Webhook handlers authenticate, persist/deduplicate a minimal event reference
+and enqueue processing in one short transaction before acknowledging promptly.
+They do not retrieve provider objects or perform domain transitions,
+fulfillment or email inline. Workers retrieve current provider state when
+ordering matters, apply transitions and enqueue side effects transactionally.
 
 ## Alternatives considered
 

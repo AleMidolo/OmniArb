@@ -91,11 +91,35 @@ enforcement.
 | `trialStart`, `trialEnd` | timestamptz, nullable | Provider boundaries |
 | `currentPeriodStart`, `currentPeriodEnd` | timestamptz, nullable | Provider boundaries |
 | `cancelAtPeriodEnd` | boolean | Last reconciled value |
-| `firstPaidAt` | timestamptz, nullable | Set from the first verified paid invoice |
+| `firstPaidInvoiceId` | text, nullable | Unique; set from the first verified paid subscription invoice |
+| `firstPaidAt` | timestamptz, nullable | Set with `firstPaidInvoiceId` and never moved by a renewal |
+| `firstPaymentRefundedAt` | timestamptz, nullable | Set from the verified approved-refund outcome |
 | `lastProviderSyncAt` | timestamptz | Reconciliation time |
 
 Store a reference to the Stripe object version or latest relevant event where
 available, but never use webhook arrival order as a state ordering guarantee.
+
+### `BillingSetup`
+
+| Field | Type | Rules |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `customerId` | UUID | Foreign key to `Customer` |
+| `flowId` | UUID | Unique foreign key to `OnboardingFlow` |
+| `operationKey` | text | Unique, stable Stripe idempotency key |
+| `stripeCheckoutSessionId` | text, nullable | Unique once assigned |
+| `stripeSetupIntentId` | text, nullable | Unique once observed |
+| `stripePaymentMethodId` | text, nullable | Server-side correlation; never exposed as customer proof |
+| `status` | enum | `PENDING`, `SESSION_CREATED`, `SUCCEEDED`, `FAILED`, `EXPIRED` |
+| `completedAt` | timestamptz, nullable | Verified payment-method readiness time |
+| `failureCategory` | text, nullable | Sanitized provider/contract category |
+| `createdAt`, `updatedAt` | timestamptz | Server-generated |
+
+The setup is `SUCCEEDED` only after a verified provider event and reconciliation
+confirm setup mode, the expected Stripe customer, a succeeded SetupIntent and a
+reusable PaymentMethod attached to that customer. The application uses the
+server-resolved PaymentMethod as the subscription default; browser-supplied
+provider IDs never satisfy this transition.
 
 ### `Entitlement`
 
@@ -201,20 +225,25 @@ provider object and target transition.
 1. **Consume Telegram link:** lock token, validate expiry/unconsumed status,
    end any superseded pending link, create identity association and mark the
    token consumed in one transaction.
-2. **Accept provider event:** insert/deduplicate `IntegrationEvent`, apply the
-   valid domain transition and insert corresponding `OutboxEvent` records in
-   one transaction.
-3. **Start the trial:** after verified Telegram availability, lock customer and
+2. **Accept provider event:** insert/deduplicate `IntegrationEvent` and insert a
+   versioned processing `OutboxEvent` in one short transaction. Once this
+   commits, duplicate deliveries are acknowledged and local retries own the
+   remaining work.
+3. **Process provider event:** retrieve any required current provider object
+   outside a long-held database transaction; then lock the affected aggregate,
+   revalidate the transition, apply it, enqueue resulting outbox work and mark
+   the integration event processed in one transaction.
+4. **Start the trial:** after verified Telegram availability, lock customer and
    entitlement, recheck trial eligibility, create/reconcile the Stripe
    subscription using a stable idempotency key, then persist provider IDs,
    `TrialGrant`, trial entitlement and outbox messages without an observable
    half-granted state. External calls cannot be inside a long database lock;
    use the durable orchestration state and compensation described in the
    architecture.
-4. **Identity change:** verify the support decision, create revoke/provision
+5. **Identity change:** verify the support decision, create revoke/provision
    attempts, and change the active association only when the old and new access
    outcomes satisfy the runbook. Record an audit event.
-5. **Outbox claim:** claim work with row locking/`SKIP LOCKED` or an equivalent
+6. **Outbox claim:** claim work with row locking/`SKIP LOCKED` or an equivalent
    lease so concurrent workers cannot deliver the same row intentionally.
 
 ---
