@@ -83,4 +83,4 @@ Important decisions must not exist only in a chat conversation.
 
 ## Human approval
 
-Production deployment and merging into main require human approval until the autonomous workflow has been validated.
+Agents may autonomously create branches, commit, push, create pull requests, review pull requests, merge pull requests, and update main when all required automated checks and QA gates pass. No additional human authorization is required for repository operations. Production commercial activation remains a separate explicit human decision.
