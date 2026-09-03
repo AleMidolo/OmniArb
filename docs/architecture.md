@@ -16,6 +16,12 @@ This document translates the approved product requirements in
 `docs/product-requirements.md` and the feature specifications in `specs/` into
 an implementable technical design.
 
+Detailed implementation contracts are maintained in:
+
+- `docs/data-model.md` for relational entities, constraints and transactions;
+- `docs/api.md` for HTTP, provider callback and adapter contracts;
+- `docs/security.md` for the threat model and required controls.
+
 Product rules remain owned by the Project Manager/Product Owner. If this
 document conflicts with an approved product requirement, the product
 requirement wins and the conflict must be returned to the PM and Architect.
@@ -195,6 +201,15 @@ The link token proves possession of a pending flow; it is not itself an
 entitlement credential. The bot callback additionally requires service
 authentication.
 
+For delivery through a private Telegram channel or supergroup, the preferred
+access artifact is a short-lived join-request invite created by the bot. The
+bot approves only the already-linked numeric Telegram user ID, revokes the
+invite after use and confirms membership before service availability is
+recorded. If the existing service delivers alerts directly through the bot, an
+entitlement allowlist keyed by numeric user ID is preferable and no chat invite
+is required. See ADR-008; the choice remains blocked on PRE-003 capability
+verification.
+
 One-trial enforcement uses the normalized email and verified Telegram numeric
 ID as independent denial signals. A consumed trial associated with either
 identity prevents automatic issuance of another trial. False-positive disputes
@@ -280,10 +295,14 @@ unresolved.
 The following entities are the minimum conceptual model. Exact table/column
 names belong to implementation.
 
+The normalized relational model, invariants and transaction boundaries are
+defined in `docs/data-model.md`.
+
 | Entity | Required information |
 |---|---|
 | `Customer` | internal ID, normalized email, Telegram numeric ID, Stripe customer ID, timestamps |
 | `TrialGrant` | customer/identity keys, consumed timestamp, source, support override audit data if applicable |
+| `BillingSetup` | customer/flow, stable operation key, Checkout Session, SetupIntent and PaymentMethod correlations, verified status and timestamps |
 | `BillingSubscription` | customer, Stripe subscription ID, provider status, trial/period boundaries, cancellation and first-payment timestamps |
 | `Entitlement` | customer, status, `serviceAvailableAt`, `validUntil`, `graceUntil`, revocation/suspension timestamps |
 | `TelegramLink` | token hash, expiry, consumption timestamp, linked Telegram ID |
@@ -305,6 +324,9 @@ need.
 ## 10. Integration contracts
 
 Route names may change, but the following trust boundaries are required.
+
+Concrete request, response, authentication and error contracts are defined in
+`docs/api.md`.
 
 ### Customer-facing server routes
 
@@ -337,7 +359,18 @@ interface TelegramProvisioningService {
     customerId: string;
     telegramUserId: string;
     idempotencyKey: string;
-  }): Promise<{ status: "provisioned" | "already_provisioned" }>;
+  }): Promise<
+    | {
+        status: "provisioned" | "already_provisioned";
+        availableAt: string;
+      }
+    | { status: "pending_confirmation"; reference: string }
+  >;
+
+  verifyAccess(input: {
+    telegramUserId: string;
+    reference?: string;
+  }): Promise<{ available: boolean; observedAt: string }>;
 
   revokeAccess(input: {
     customerId: string;
@@ -420,6 +453,9 @@ design; analytics remains disabled where that design is not ready.
   readiness;
 - backups, retention and deletion procedures must be defined before commercial
   launch.
+
+The control-to-threat mapping and security acceptance tests are maintained in
+`docs/security.md`.
 
 The exact Italy-only and age-verification controls remain blocked on legal/PM
 decisions and must not be invented by implementation.
@@ -548,3 +584,5 @@ section 16 are verified.
 - `docs/decisions/ADR-005-entitlement-separated-from-billing.md`
 - `docs/decisions/ADR-006-telegram-identity-linking.md`
 - `docs/decisions/ADR-007-commercial-launch-gate.md`
+- `docs/decisions/ADR-008-controlled-telegram-access.md`
+- `docs/decisions/ADR-009-database-outbox-and-reconciliation.md`
