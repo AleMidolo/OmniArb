@@ -39,10 +39,7 @@ jobs:
           node-version: '22.13.0'
           cache: npm
 
-      - name: Install application dependencies
-        run: npm ci
-
-      - name: Install pinned Cloudflare migration toolchain
+      - name: Install application + pinned Cloudflare migration toolchain
         run: >-
           npm install --no-save --no-package-lock
           vinext@${VINEXT_VERSION}
@@ -70,12 +67,14 @@ jobs:
         run: bash scripts/cloudflare-smoke.sh
 
       - name: Upload compatibility evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cloudflare-compatibility
           path: |
             vinext-check.txt
             worker-size.txt
+          if-no-files-found: ignore
           retention-days: 14
 
   deploy-main:
@@ -95,10 +94,7 @@ jobs:
           node-version: '22.13.0'
           cache: npm
 
-      - name: Install application dependencies
-        run: npm ci
-
-      - name: Install pinned Cloudflare migration toolchain
+      - name: Install application + pinned Cloudflare migration toolchain
         run: >-
           npm install --no-save --no-package-lock
           vinext@${VINEXT_VERSION}
@@ -137,10 +133,7 @@ jobs:
           node-version: '22.13.0'
           cache: npm
 
-      - name: Install application dependencies
-        run: npm ci
-
-      - name: Install pinned Cloudflare migration toolchain
+      - name: Install application + pinned Cloudflare migration toolchain
         run: >-
           npm install --no-save --no-package-lock
           vinext@${VINEXT_VERSION}
