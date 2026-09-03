@@ -2,7 +2,7 @@
 
 **Priority:** P0  
 **Owner of WHAT:** Project Manager / Product Owner  
-**Status:** READY FOR DEVELOPMENT — PRE_LAUNCH
+**Status:** IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH; PUBLICATION PENDING RELEASE SETUP
 
 ---
 
@@ -204,4 +204,14 @@ Provider, consent model and event implementation belong to architecture/privacy 
 - Customer dashboard.
 - Advertising/retargeting.
 
-**READY FOR DEVELOPMENT — PRE_LAUNCH WEBSITE**
+---
+
+## 10. Delivery record
+
+- Implemented via PR #9.
+- Independent QA passed on head `f2d1eadd460c2497715bfff5b38e627a1768130c`, including desktop/mobile Playwright coverage and verification of the `PRE_LAUNCH` commercial gate.
+- Architecture review passed on the same head.
+- Merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
+- Public Vercel publication remains a Release / DevOps concern tracked separately; commercial activation remains blocked by M3–M6.
+
+**IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH**
