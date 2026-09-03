@@ -2,7 +2,7 @@
 
 **Priority:** P0  
 **Owner of WHAT:** Project Manager / Product Owner  
-**Status:** IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH; PUBLICATION PENDING RELEASE SETUP
+**Status:** IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH; CLOUDFLARE PUBLICATION MIGRATION ACTIVE
 
 ---
 
@@ -212,6 +212,9 @@ Provider, consent model and event implementation belong to architecture/privacy 
 - Independent QA passed on head `f2d1eadd460c2497715bfff5b38e627a1768130c`, including desktop/mobile Playwright coverage and verification of the `PRE_LAUNCH` commercial gate.
 - Architecture review passed on the same head.
 - Merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
-- Public Vercel publication remains a Release / DevOps concern tracked separately; commercial activation remains blocked by M3–M6.
+- Deployment architecture now targets Cloudflare Workers through vinext under ADR-010.
+- DEP-001 / issue #13 owns migration/runtime parity and GitHub-driven preview/main automation.
+- Release / DevOps issue #11 owns minimal Cloudflare bootstrap and stable publication after DEP-001 passes QA.
+- The Cloudflare migration must preserve accepted landing-page behavior; commercial activation remains blocked by M3–M6.
 
-**IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH**
+**IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH; CLOUDFLARE RELEASE PENDING**
