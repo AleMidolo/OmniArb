@@ -22,9 +22,9 @@
 
 ## 2. Delivery order
 
-### M2 informational release
+### M2 informational application
 
-The M2 implementation was completed in PR #9, independently QA accepted, architecture reviewed, and merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
+The M2 product/application implementation was completed in PR #9, independently QA accepted, architecture reviewed, and merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
 
 | Order | ID | Work package | Priority | Owner | Status | Evidence |
 |---:|---|---|---:|---|---|---|
@@ -37,13 +37,15 @@ The M2 implementation was completed in PR #9, independently QA accepted, archite
 | 7 | OMNI-002G | M2 automated checks and QA handoff | P0 | Developer / QA | COMPLETE | CI + Playwright PASS |
 | 8 | OMNI-007A | Privacy-safe analytics adapter, disabled by default | P1 | Developer | COMPLETE | PR #9 architecture review; remains disabled |
 
-### M2 release/publication
+### M2 Cloudflare migration and publication
 
-| ID | Work package | Priority | Owner | Status | Blocks |
-|---|---|---:|---|---|---|
-| REL-001 / issue #11 | Initialize/link Vercel project and publish merged informational build | P0 | Release / DevOps | BLOCKED — VERCEL PROJECT/ACCOUNT INITIALIZATION REQUIRED | Public M2 publication |
+| Order | ID | Work package | Priority | Owner | Status | Blocks |
+|---:|---|---|---:|---|---|---|
+| 1 | DEP-001 / issue #13 | Migrate Next.js 16.3.4 to Cloudflare Workers using vinext; preserve PRE_LAUNCH behavior; add GitHub-driven main deploy + PR preview versions | P0 | Developer | READY FOR DEVELOPMENT after architecture migration PR merges | Cloudflare runtime QA and publication |
+| 2 | DEP-001-QA | Verify a real Cloudflare Worker preview, including `/`, not-found, security headers, browser coverage and checkout-gate bypass tests | P0 | QA | READY AFTER DEPENDENCY | issue #13 implementation |
+| 3 | REL-001 / issue #11 | Bootstrap Cloudflare account/`workers.dev`/least-privilege GitHub secrets and verify stable main + PR preview publication | P0 | Release / DevOps | BLOCKED — DEP-001 + minimal Cloudflare credential bootstrap | Public M2 publication |
 
-The release task is limited to the non-commercial `PRE_LAUNCH` site. It must not enable Stripe billing, trial activation, Telegram commercial provisioning or analytics collection.
+The deployment migration must not change accepted product behavior. It remains limited to the non-commercial `PRE_LAUNCH` site and must not enable Stripe billing, trial activation, Telegram commercial provisioning, email-provider integration or analytics collection.
 
 ### Parallel product-owner/external inputs
 
@@ -69,7 +71,7 @@ The release task is limited to the non-commercial `PRE_LAUNCH` site. It must not
 
 ## 3. M2 acceptance record
 
-Independent QA verified the merged implementation against the approved M2 acceptance criteria, including:
+Independent QA verified the product/application implementation against the approved M2 acceptance criteria, including:
 
 - Italian-only visible content and correct service boundaries;
 - the illustrative surebet calculation and execution-risk disclosure;
@@ -80,11 +82,32 @@ Independent QA verified the merged implementation against the approved M2 accept
 - desktop and Pixel 7 mobile Playwright coverage;
 - keyboard operation, focus/skip-link behavior, reduced-motion handling, horizontal-overflow checks, console/runtime-error checks and image alternatives.
 
-Issue #10 was verified fixed. The architecture gate also passed. These results authorize the informational M2 implementation to proceed through release in `PRE_LAUNCH`; they do not authorize commercial activation.
+Issue #10 was verified fixed. The architecture gate also passed. These results remain the behavioral baseline during the Cloudflare migration; Cloudflare runtime parity still requires independent QA before M2 publication is complete.
 
 ---
 
-## 4. Product decisions still required
+## 4. Cloudflare deployment architecture acceptance
+
+DEP-001 is ready only under ADR-010 and must satisfy all of the following:
+
+- run and record `npx vinext check` against the exact repository;
+- preserve existing Next.js lint/typecheck/unit/build/Playwright validation;
+- add a successful vinext production build and local Worker-runtime tests;
+- explicitly configure `OMNIARB_MODE=PRE_LAUNCH`, `workers_dev=true` and `preview_urls=true`;
+- preserve `/api/checkout/setup` PRE_LAUNCH `503 COMMERCIAL_DISABLED` + `Cache-Control: no-store` behavior;
+- preserve current security headers and unknown-route behavior;
+- deploy `main` automatically only after CI succeeds;
+- upload same-repository PR Worker versions only after CI succeeds and assign `pr-<number>` preview aliases;
+- never expose Cloudflare GitHub secrets to fork/untrusted PR execution;
+- use only `CLOUDFLARE_ACCOUNT_ID` and least-privilege `CLOUDFLARE_API_TOKEN` for deployment;
+- record Worker bundle/free-tier compatibility evidence;
+- keep all commercial/provider integrations disabled.
+
+A concrete vinext incompatibility that breaks required behavior returns to the Architect. It must not be hidden by deleting server-side behavior or silently changing product scope.
+
+---
+
+## 5. Product decisions still required
 
 No developer should invent these outcomes:
 
@@ -98,10 +121,12 @@ No developer should invent these outcomes:
 
 ---
 
-## 5. Current workflow handoff
+## 6. Current workflow handoff
 
-The implementation backlog for M2 is complete. The highest-priority unblocked workflow is release/publication of the already-merged informational site, tracked in issue #11.
+The highest-priority ready work is **Developer — DEP-001 / issue #13**.
 
-Commercial implementation remains blocked by PRE-002 and PRE-003 at minimum. The Developer must not begin OMNI-003 through OMNI-005 merely because M2 implementation is complete.
+After the Cloudflare implementation is published in a PR, QA owns independent Worker-preview verification. Once that passes and the migration merges, Release / DevOps owns issue #11 to complete minimal Cloudflare account/API-token bootstrap and verify stable `main` publication plus preview automation.
 
-**CURRENT HANDOFF: RELEASE / DEVOPS — ISSUE #11, PRE_LAUNCH PUBLICATION ONLY.**
+Commercial implementation remains blocked by PRE-002 and PRE-003 at minimum. The Developer must not begin OMNI-003 through OMNI-005 merely because the deployment migration is active.
+
+**CURRENT HANDOFF: DEVELOPER — ISSUE #13 / DEP-001.**

@@ -1,7 +1,7 @@
 # OmniArb — Product Roadmap
 
 **Owner:** Project Manager / Product Owner  
-**Status:** Active — M0/M1 complete; M2 implementation accepted and awaiting public release setup  
+**Status:** Active — M0/M1 complete; M2 implementation accepted and Cloudflare migration active  
 **Scope:** Italian MVP, Italy-only B2C launch
 
 ---
@@ -18,6 +18,7 @@
 8. Every development task must be independently testable.
 9. QA determines whether acceptance criteria are satisfied.
 10. Informational deployment does not imply commercial activation.
+11. Deployment target is Cloudflare Workers; `main` and PR previews are delivered through GitHub-controlled CI/CD.
 
 ---
 
@@ -33,9 +34,9 @@ Product requirements, roadmap, backlog, user flows and feature specifications ar
 
 ### M1 — Architecture baseline
 
-**Status:** COMPLETE — architecture baseline and ADRs merged via PR #1 and refined by PR #8.
+**Status:** COMPLETE — architecture baseline and ADRs merged via PR #1, refined by PR #8, and deployment amended by ADR-010.
 
-The approved architecture defines the modular-monolith boundary, Stripe lifecycle, entitlement model, Telegram integration boundary, security controls, persistence, failure recovery, testing strategy and commercial gating.
+The approved architecture defines the modular-monolith boundary, Stripe lifecycle, entitlement model, Telegram integration boundary, security controls, persistence, failure recovery, testing strategy, commercial gating and Cloudflare Workers deployment contract.
 
 ---
 
@@ -45,21 +46,25 @@ The approved architecture defines the modular-monolith boundary, Stripe lifecycl
 
 **Commercial state:** `PRE_LAUNCH`
 
-**Implementation status:** COMPLETE AND QA ACCEPTED.
+**Application status:** COMPLETE AND QA ACCEPTED.
 
 PR #9 implemented the Italian landing experience, static arbitrage example, explanatory Telegram mockups/placeholders, pricing/trial/risk content, server-side fail-closed commercial gate, disabled analytics adapter, responsive/accessibility hardening and persistent CI/browser validation.
 
 Independent QA passed on head `f2d1eadd460c2497715bfff5b38e627a1768130c`; architecture review also passed. PR #9 merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
 
-**Release status:** BLOCKED ONLY ON PUBLICATION INFRASTRUCTURE — issue #11 tracks Vercel project/account initialization and publication of the merged informational build.
+**Deployment migration status:** P0 ACTIVE — issue #13 (`DEP-001`) migrates the accepted Next.js 16 application to Cloudflare Workers with vinext and adds automatic GitHub-driven PR previews plus stable `main` deployment.
+
+**Publication status:** BLOCKED ON DEP-001 + MINIMAL CLOUDFLARE BOOTSTRAP — issue #11 owns the Cloudflare account/`workers.dev`/least-privilege GitHub-secret bootstrap and release verification after #13 merges.
 
 **M2 exit criteria after release:**
-- the merged `PRE_LAUNCH` site is publicly reachable;
+- the merged `PRE_LAUNCH` site is publicly reachable on the stable Cloudflare Worker URL;
+- `main` automatically deploys only after CI succeeds;
+- pull requests receive stable Cloudflare Worker preview URLs suitable for QA;
 - CTA remains `Prossimamente`;
 - no live subscription/payment/Telegram commercial path is reachable;
-- release verification confirms the fail-closed checkout route and healthy runtime/build logs.
+- release verification confirms the fail-closed checkout route, security headers and healthy Worker build/runtime logs.
 
-The M2 implementation itself must not be reopened unless release verification finds a defect.
+The accepted M2 product behavior must not be reopened merely because the hosting adapter changes. Any vinext/Workers behavior difference is treated as a deployment defect unless a concrete incompatibility is returned to Architecture.
 
 ---
 
@@ -107,7 +112,7 @@ Commercial launch requires verified identity linking, automated provisioning/rev
 **Goal:** Enable trial and paid subscriptions for eligible Italian B2C customers.
 
 **Launch gate — ALL required:**
-- M2 publicly released in `PRE_LAUNCH`;
+- M2 publicly released on Cloudflare Workers in `PRE_LAUNCH`;
 - M3 complete;
 - M4 complete;
 - M5 complete;
@@ -145,7 +150,8 @@ After commercial launch, observe landing engagement, trial starts, onboarding su
 | OMNI-006 | Legal, trust, eligibility and risk presentation | P0 | M2/M3/M6 | PRE-LAUNCH IMPLEMENTED; COMMERCIAL BLOCKED |
 | OMNI-007 | Minimal conversion analytics | P1 | M2/M6 | ADAPTER COMPLETE/DISABLED; ENABLEMENT BLOCKED |
 | OMNI-008 | Commercial launch gate | P0 | M6 | BLOCKED until all prerequisites pass |
-| REL-001 / #11 | Publish M2 informational site on Vercel | P0 | M2 | BLOCKED — Vercel project/account initialization |
+| DEP-001 / #13 | Migrate Next.js 16 to Cloudflare Workers with vinext + GitHub previews/main deploy | P0 | M2 | READY FOR DEVELOPMENT after architecture PR merges |
+| REL-001 / #11 | Bootstrap Cloudflare deployment credentials and publish M2 informational site | P0 | M2 | BLOCKED — DEP-001 + one-time Cloudflare bootstrap |
 
 ---
 
@@ -154,11 +160,17 @@ After commercial launch, observe landing engagement, trial starts, onboarding su
 ```text
 M0 Product baseline ........ COMPLETE
         |
-M1 Architecture ............ COMPLETE
+M1 Architecture ............ COMPLETE + Cloudflare amendment
         |
-M2 implementation .......... COMPLETE + QA/architecture PASS
+M2 application ............. COMPLETE + QA/architecture PASS
         |
-M2 public PRE_LAUNCH release ----> issue #11 / Release-DevOps
+DEP-001 Cloudflare migration (#13)
+        |
+QA Cloudflare preview verification
+        |
+REL-001 stable main publication (#11)
+        |
+M2 public PRE_LAUNCH ....... COMPLETE when release checks pass
         |
         +------------------------------+
                                        |
@@ -191,6 +203,8 @@ The following remain mandatory before commercial activation:
 - QA has not passed end-to-end commercial flows;
 - explicit commercial activation approval has not been obtained.
 
+Cloudflare publication of the informational site does not remove any of these blockers.
+
 ---
 
 ## 6. Intentionally deferred roadmap items
@@ -201,6 +215,10 @@ No task should be created automatically for English localization, international 
 
 ## 7. Current handoff
 
-No further M2 application implementation is currently required. The highest-priority workflow item is issue #11: initialize/link the Vercel project and publish the already-merged informational site in `PRE_LAUNCH`, without configuring commercial credentials or enabling commerce.
+The current P0 implementation handoff is **Developer — issue #13 / DEP-001**. The Developer must migrate the accepted application to vinext/Cloudflare Workers, preserve all PRE_LAUNCH behavior, and add GitHub-controlled automatic PR previews plus stable `main` deployment.
 
-**NEXT DELIVERY OWNER: RELEASE / DEVOPS — ISSUE #11.**
+After #13 passes QA and merges, **Release / DevOps — issue #11** completes the minimal Cloudflare account/API-token bootstrap and verifies the stable informational publication.
+
+Commercial implementation remains blocked by PRE-002 and PRE-003 at minimum.
+
+**NEXT DELIVERY OWNER: DEVELOPER — ISSUE #13.**

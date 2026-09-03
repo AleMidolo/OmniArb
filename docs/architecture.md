@@ -2,9 +2,10 @@
 
 **Owner:** Software Architect
 
-**Status:** Approved architecture baseline
+**Status:** Approved architecture baseline — Cloudflare deployment amendment active
 
-**Date:** 2026-09-02
+**Date:** 2026-09-02  
+**Deployment amendment:** 2026-09-03
 
 **Scope:** Italian MVP, Italy-only B2C launch
 
@@ -39,6 +40,15 @@ The architecture must satisfy these non-negotiable constraints:
 
 - the informational website can be released before commerce is enabled;
 - commercial endpoints are disabled by default until every launch gate passes;
+- the same application behavior must run locally, in PR previews and on the
+  stable public deployment;
+- `main` must deploy automatically only after CI succeeds;
+- pull requests must receive stable Cloudflare preview deployments suitable for
+  QA;
+- routine deployment must be operable through GitHub with minimal dashboard
+  interaction;
+- the M2 informational deployment should remain within Cloudflare Workers Free
+  where practical;
 - a customer receives seven actual days of usable Telegram service;
 - checkout redirects and browser input never establish entitlement;
 - verified Stripe events are authoritative for billing state;
@@ -56,14 +66,17 @@ The architecture must satisfy these non-negotiable constraints:
 
 ## 3. System shape
 
-OmniArb is a **modular monolith**. One deployable web application contains the
-public UI, server routes and domain modules, backed by one PostgreSQL database.
-External services are accessed through narrow adapters.
+OmniArb is a **modular monolith**. One deployable Next.js application contains
+the public UI, server routes and domain modules. The application is built for
+Cloudflare Workers through vinext. Future commercial persistence remains one
+managed PostgreSQL database accessed through Prisma unless another ADR changes
+that decision.
 
 ```mermaid
 flowchart TD
-    Browser["Customer browser"] --> App["OmniArb web application"]
-    App --> DB["PostgreSQL"]
+    Browser["Customer browser"] --> Worker["Cloudflare Worker / vinext"]
+    Worker --> App["OmniArb Next.js modular monolith"]
+    App --> DB["Managed PostgreSQL"]
     App --> Stripe["Stripe Billing"]
     App --> Telegram["Existing Telegram service"]
     App --> Email["Transactional email provider"]
@@ -74,6 +87,10 @@ workflow volume and team size favor simpler deployment, transactions and
 observability. The module boundaries below allow later extraction if evidence
 shows that it is needed.
 
+Cloudflare-specific bindings or APIs may be introduced only behind explicit
+integration boundaries. Selecting Workers does not implicitly migrate
+PostgreSQL to D1, or domain state to KV/Durable Objects.
+
 ---
 
 ## 4. Technology baseline
@@ -81,20 +98,30 @@ shows that it is needed.
 | Area | Decision |
 |---|---|
 | Application | Next.js with TypeScript |
+| Cloudflare adapter | vinext with Vite + Cloudflare Vite plugin |
 | Rendering | Server/static rendering by default; client components only where interaction requires them |
 | Persistence | Managed PostgreSQL |
 | Data access and migrations | Prisma |
 | Payments | Stripe Checkout/Setup, Subscription Billing and Customer Portal |
-| Hosting | Vercel-compatible deployment with managed PostgreSQL |
+| Hosting/runtime | Cloudflare Workers |
+| Deployment | GitHub Actions + Wrangler; stable `main` Worker plus PR Worker-version previews |
 | Unit/integration tests | Vitest |
 | Browser/end-to-end tests | Playwright |
 | Styling | Project-local CSS approach selected by the Developer; no global state library is required |
 | Email | Provider-neutral `EmailService` adapter |
 | Analytics | Provider-neutral, privacy-focused event adapter |
 
-No exact dependency version is mandated here. The Developer must pin supported
-versions, commit lockfiles and validate framework/provider compatibility during
-project scaffolding.
+The current application is Next.js 16.3.4. Cloudflare recommends vinext for
+existing Next.js 16 applications, but vinext is beta. The Developer must pin
+supported versions, commit lockfiles, run `npx vinext check`, and validate the
+exact application behavior on the Cloudflare runtime before the migration is
+accepted.
+
+The existing Next.js build/test path remains a compatibility baseline during
+migration. A scaffold-generated deploy command is not authoritative; explicit
+`vite.config.ts`, `wrangler.jsonc` and validated Wrangler commands are.
+
+See ADR-002 and ADR-010.
 
 ---
 
@@ -136,8 +163,8 @@ src/
 | Email | Retry-safe transactional messages | General marketing campaigns |
 | Analytics | Anonymous/minimized funnel events | Billing or Telegram identifiers in event payloads |
 
-Domain logic must not import Stripe or Telegram SDK types outside the relevant
-adapter/module boundary.
+Domain logic must not import Stripe, Telegram or Cloudflare runtime SDK types
+outside the relevant adapter/integration boundary.
 
 ---
 
@@ -160,10 +187,22 @@ COMMERCIAL
 - a hidden link, crafted request or stale browser bundle cannot bypass the
   restriction.
 
+For the M2 Cloudflare deployment, `OMNIARB_MODE=PRE_LAUNCH` is also configured
+explicitly in the Worker configuration. The code-level safe default remains a
+second line of defense.
+
+`src/app/api/checkout/setup/route.ts` is a required migration regression target:
+
+- in `PRE_LAUNCH` it returns `503 COMMERCIAL_DISABLED`;
+- the response remains `Cache-Control: no-store`;
+- query/body/header/method-override tricks cannot enable commerce;
+- an accidental `COMMERCIAL` environment value still remains fail-closed until
+  OMNI-004 deliberately implements the commercial operation.
+
 Changing the deployment setting to `COMMERCIAL` is necessary but not sufficient
-for launch. The human approval and M6 gates in `docs/roadmap.md` must first be
-recorded as complete. Secrets and provider configuration must also be validated
-at startup/deployment time.
+for launch. The explicit M6 approval and all roadmap gates must first be
+recorded as complete. Cloudflare deployment availability never implies
+commercial authorization.
 
 ---
 
@@ -438,6 +477,11 @@ design; analytics remains disabled where that design is not ready.
 ## 13. Security and privacy controls
 
 - secrets are server-only and supplied through deployment secret management;
+- Cloudflare deployment credentials exist only as GitHub secrets and are scoped
+  to the required account/Worker permissions;
+- PR deployment workflows using Cloudflare secrets do not execute untrusted
+  fork PR code;
+- `OMNIARB_MODE=PRE_LAUNCH` is explicit in the M2 Worker configuration;
 - Stripe webhook signatures are verified against the unmodified request body;
 - Telegram service callbacks use authenticated, rotatable credentials;
 - all commercial input is schema-validated and size-limited;
@@ -464,12 +508,63 @@ decisions and must not be invented by implementation.
 
 ## 14. Deployment and operations
 
-Environments are separated at minimum into local/development, preview/test and
-production. Each uses isolated databases, Stripe configuration, webhook secrets
-and Telegram/email credentials. Test events and production events must never
-share durable state.
+### 14.1 Deployment environments
 
-Deployments require:
+Deployment uses Cloudflare Workers and separates at minimum:
+
+- local development;
+- pull-request preview versions;
+- stable `main` informational deployment;
+- later commercial production configuration only after M6 approval.
+
+For M2 the stable Worker is `omniarb-prelaunch` unless DEP-001 documents a
+required naming adjustment. `workers_dev` and `preview_urls` are explicitly
+enabled.
+
+The stable public URL is the Worker `*.workers.dev` URL. Pull requests use
+version previews with the alias `pr-<number>` so QA has a stable URL across
+commits to that PR.
+
+### 14.2 GitHub Actions delivery contract
+
+GitHub Actions is the authoritative CI/CD orchestrator:
+
+1. checkout and install pinned dependencies;
+2. run lint, TypeScript, Vitest, Next.js production build and Playwright;
+3. run vinext compatibility/build validation;
+4. only after validation succeeds:
+   - `main`: deploy with Wrangler to the stable Worker;
+   - same-repository PR: upload a Worker version with preview alias
+     `pr-<number>`;
+5. expose the resulting preview/stable URL to Release/QA;
+6. perform post-deploy smoke checks where credentials/event context permit.
+
+The Cloudflare deployment job requires only:
+
+- `CLOUDFLARE_ACCOUNT_ID`;
+- a least-privilege `CLOUDFLARE_API_TOKEN`.
+
+These are GitHub secrets and are not application runtime commercial secrets.
+One-time Cloudflare account, `workers.dev` subdomain and API-token bootstrap is
+owned by Release / DevOps in issue #11. Routine releases should not require
+Cloudflare dashboard interaction afterward.
+
+### 14.3 Free-tier constraint
+
+M2 should remain within Workers Free where practical. DEP-001 records the
+resulting Worker size and any runtime limitation. The relevant architecture
+risk is the Free-plan Worker size/CPU envelope; if the exact application cannot
+fit or execute reliably, the Developer returns a concrete measured blocker to
+the Architect rather than silently enabling paid infrastructure or removing
+required server behavior.
+
+No database or commercial external integration is needed for the M2 Worker.
+Future commercial environments will add isolated database/provider credentials
+only after their existing gates pass.
+
+### 14.4 Operational requirements
+
+Commercial deployments later require:
 
 - repeatable database migrations;
 - validation of required environment variables;
@@ -495,7 +590,8 @@ possible.
 | Integration | database constraints/transactions, Stripe event handling, outbox processing, Telegram and email adapters |
 | Contract | representative Stripe fixtures and the external Telegram provisioning contract |
 | End-to-end | informational landing, pre-launch gate, identity linking, payment setup, trial activation, portal cancellation and failure recovery |
-| Security | forged redirects, invalid webhook signatures, replayed events/tokens, rate limits, client-side entitlement manipulation |
+| Cloudflare compatibility | `vinext check`, vinext production build, Worker runtime `/`, not-found, headers and API-route parity |
+| Security | forged redirects, invalid webhook signatures, replayed events/tokens, rate limits, client-side entitlement manipulation, PRE_LAUNCH bypass attempts |
 | Accessibility/responsive | keyboard/focus, semantic structure, image alternatives, reduced motion, mobile and desktop viewports |
 
 Critical cases include duplicate Stripe events, duplicate Telegram provisioning,
@@ -504,15 +600,30 @@ subscription creation failure after provisioning, delayed/missing webhooks,
 second-trial attempts, cancellation during trial, failed renewal recovery,
 grace expiry and approved refund revocation.
 
-CI must run formatting/linting, type checking, unit/integration tests and the
-appropriate browser smoke tests before review. Commercial E2E tests use Stripe
+For DEP-001, QA must verify a real Cloudflare PR preview, not only the Next.js
+local server. The Cloudflare runtime must preserve `POST /api/checkout/setup`,
+security headers, Italian page behavior and no-commercial-path guarantees.
+
+CI must run linting, type checking, unit/integration tests and the appropriate
+browser smoke tests before deployment. Commercial E2E tests later use Stripe
 test mode and a controlled Telegram adapter/test environment.
 
 ---
 
 ## 16. External prerequisites and unresolved blockers
 
-These do not block OMNI-002 informational implementation, but they block the
+### M2 deployment blockers
+
+- DEP-001 / issue #13 must implement and validate vinext/Workers and GitHub
+  preview/main automation;
+- Release / DevOps issue #11 must provide the Cloudflare account,
+  `workers.dev` subdomain and least-privilege GitHub deployment credentials;
+- QA must pass against an actual Cloudflare preview before the migration is
+  considered complete.
+
+### Commercial blockers
+
+These do not block the informational Cloudflare deployment, but they block the
 commercial flow:
 
 - verify that the existing Telegram service can link, provision and revoke a
@@ -530,48 +641,42 @@ arbitrage engine into the website project.
 
 ---
 
-## 17. Developer handoff — first increment
+## 17. Current implementation handoff — Cloudflare migration
 
-The first implementation increment is **OMNI-002 in `PRE_LAUNCH` mode**.
+The M2 application implementation is already QA accepted on the existing
+Next.js runtime. The current P0 architecture handoff is **DEP-001 / issue #13**.
 
-### Required components
+### Developer scope
 
-- Next.js/TypeScript application shell;
-- Italian marketing and educational landing page;
-- static illustrative arbitrage example;
-- Telegram explanation and approved screenshot/mockup slots;
-- pricing/trial, FAQ, risk and eligibility sections;
-- footer/legal placeholders that do not invent seller data;
-- server-side commercial-mode configuration;
-- responsive and accessible behavior;
-- privacy-safe analytics adapter, disabled until configuration/consent is ready.
+- run and record `npx vinext check`;
+- add/pin vinext, Vite, Cloudflare Vite plugin and Wrangler dependencies needed
+  by the approved configuration;
+- create explicit `vite.config.ts` and `wrangler.jsonc`;
+- preserve the normal Next.js development/build path during migration;
+- add vinext build and local Worker runtime validation;
+- extend GitHub Actions so validated PRs get `pr-<number>` preview deployments
+  and validated `main` deploys the stable Worker;
+- protect Cloudflare secrets from fork/untrusted PR execution;
+- expose preview URLs for QA;
+- record bundle/free-tier compatibility evidence.
 
-### Constraints
+### Non-negotiable behavior
 
-- no reachable checkout, payment collection or Telegram provisioning;
-- CTA is `Prossimamente`;
-- no English localization, account/dashboard, interactive calculator, waiting
-  list, testimonials, guaranteed returns or guaranteed alert frequency;
-- no fabricated seller/legal details or product evidence;
-- no implementation of the arbitrage engine.
+- `OMNIARB_MODE=PRE_LAUNCH` only;
+- CTA remains `Prossimamente`;
+- no Stripe, payment collection, trial, Telegram commercial provisioning or
+  analytics activation;
+- `POST /api/checkout/setup` remains fail-closed exactly as specified;
+- no database/provider architecture changes are bundled into deployment
+  migration.
 
-### Required validation
+### Handoff after implementation
 
-- automated test proving commercial endpoints remain unavailable in
-  `PRE_LAUNCH`;
-- responsive mobile/desktop checks;
-- keyboard navigation and visible focus;
-- accessible alternatives for meaningful images;
-- reduced-motion behavior where animation is used;
-- Italian-only visible content;
-- claims and risk wording checked against `specs/landing-page.md` and
-  `specs/legal-trust-content.md`.
-
-**READY FOR DEVELOPMENT — OMNI-002 / PRE-LAUNCH WEBSITE**
-
-OMNI-003 through OMNI-005 are not ready for production implementation until the
-external Telegram provisioning contract and commercial prerequisites in
-section 16 are verified.
+1. Developer publishes the DEP-001 PR with test evidence.
+2. QA independently tests the Cloudflare preview and gate behavior.
+3. Architect reviews any runtime/provider-boundary changes if needed.
+4. Release / DevOps completes issue #11 bootstrap and verifies the stable
+   `main` deployment.
 
 ---
 
@@ -586,3 +691,4 @@ section 16 are verified.
 - `docs/decisions/ADR-007-commercial-launch-gate.md`
 - `docs/decisions/ADR-008-controlled-telegram-access.md`
 - `docs/decisions/ADR-009-database-outbox-and-reconciliation.md`
+- `docs/decisions/ADR-010-cloudflare-workers-vinext-deployment.md`
