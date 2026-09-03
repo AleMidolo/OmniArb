@@ -9,16 +9,27 @@ npx wrangler dev --config dist/server/wrangler.json --local --port "${PORT}" >"$
 WRANGLER_PID=$!
 trap 'kill "${WRANGLER_PID}" 2>/dev/null || true' EXIT
 
+READY=false
 for _ in $(seq 1 40); do
-  if curl --silent --fail "${BASE_URL}/" >/dev/null; then
+  if curl --silent --fail --max-time 2 "${BASE_URL}/" >/dev/null; then
+    READY=true
+    break
+  fi
+  if ! kill -0 "${WRANGLER_PID}" 2>/dev/null; then
     break
   fi
   sleep 1
 done
 
+if [[ "${READY}" != "true" ]]; then
+  echo "Wrangler failed to start the local Worker." >&2
+  cat "${LOG_FILE}" >&2
+  exit 1
+fi
+
 HOME_HEADERS="$(mktemp)"
 HOME_BODY="$(mktemp)"
-curl --silent --show-error --dump-header "${HOME_HEADERS}" --output "${HOME_BODY}" "${BASE_URL}/"
+curl --silent --show-error --max-time 10 --dump-header "${HOME_HEADERS}" --output "${HOME_BODY}" "${BASE_URL}/"
 grep -qi '^content-security-policy:' "${HOME_HEADERS}"
 grep -qi '^x-content-type-options: nosniff' "${HOME_HEADERS}"
 if grep -qi '^x-powered-by:' "${HOME_HEADERS}"; then
@@ -28,12 +39,12 @@ fi
 
 grep -q 'Prossimamente' "${HOME_BODY}"
 
-NOT_FOUND_STATUS="$(curl --silent --output /tmp/omniarb-not-found.html --write-out '%{http_code}' "${BASE_URL}/__worker-not-found-smoke")"
+NOT_FOUND_STATUS="$(curl --silent --max-time 10 --output /tmp/omniarb-not-found.html --write-out '%{http_code}' "${BASE_URL}/__worker-not-found-smoke")"
 test "${NOT_FOUND_STATUS}" = "404"
 
 CHECKOUT_HEADERS="$(mktemp)"
 CHECKOUT_BODY="$(mktemp)"
-CHECKOUT_STATUS="$(curl --silent --show-error --dump-header "${CHECKOUT_HEADERS}" --output "${CHECKOUT_BODY}" --write-out '%{http_code}' \
+CHECKOUT_STATUS="$(curl --silent --show-error --max-time 10 --dump-header "${CHECKOUT_HEADERS}" --output "${CHECKOUT_BODY}" --write-out '%{http_code}' \
   -X POST \
   -H 'Content-Type: application/json' \
   -H 'X-HTTP-Method-Override: GET' \
