@@ -9,6 +9,7 @@ test("presents the Italian pre-launch experience", async ({ page }) => {
   await expect(page.locator("form")).toHaveCount(0);
   await expect(page.getByText("Profitto teorico")).toBeVisible();
   await expect(page.getByText("18+", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/stop ai rinnovi, accesso fino alla fine del periodo già pagato/i)).toBeVisible();
 });
 
 test("keeps the principal navigation keyboard-accessible", async ({ page }) => {

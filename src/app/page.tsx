@@ -47,7 +47,7 @@ const faqs = [
   {
     question: "Posso annullare o chiedere un rimborso?",
     answer:
-      "La disdetta durante la prova eviterà il primo addebito. Sul primo pagamento da 50 € è prevista una garanzia volontaria di rimborso di 7 giorni, senza domande; i diritti inderogabili del consumatore restano invariati. I termini finali saranno pubblicati dopo la revisione legale.",
+      "La disdetta durante la prova eviterà il primo addebito. Durante un abbonamento a pagamento, la disdetta bloccherà i rinnovi futuri e l'accesso resterà disponibile fino alla fine del periodo già pagato; la sola disdetta non comporterà automaticamente un rimborso. Sul primo pagamento da 50 € è prevista una garanzia volontaria di rimborso di 7 giorni, senza domande; i diritti inderogabili del consumatore restano invariati. I termini finali saranno pubblicati dopo la revisione legale.",
   },
   {
     question: "Dove sarà disponibile il servizio?",
@@ -351,9 +351,10 @@ export default function Home() {
                 <li><span>01</span> Metodo di pagamento richiesto all&apos;attivazione</li>
                 <li><span>02</span> Nessun addebito da 50 € all&apos;inizio della prova</li>
                 <li><span>03</span> Disdetta durante la prova: nessun primo addebito</li>
-                <li><span>04</span> Una sola prova gratuita per cliente</li>
-                <li><span>05</span> Promemoria via email circa 24–48 ore prima del primo addebito</li>
-                <li><span>06</span> Garanzia volontaria di 7 giorni sul primo pagamento</li>
+                <li><span>04</span> Disdetta dopo il pagamento: stop ai rinnovi, accesso fino alla fine del periodo già pagato</li>
+                <li><span>05</span> Una sola prova gratuita per cliente</li>
+                <li><span>06</span> Promemoria via email circa 24–48 ore prima del primo addebito</li>
+                <li><span>07</span> Garanzia volontaria di 7 giorni sul primo pagamento</li>
               </ul>
               <button className="button button-primary full-width" type="button" disabled>
                 Prossimamente

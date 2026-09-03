@@ -13,6 +13,15 @@ describe("Italian pre-launch landing page", () => {
     expect(html).not.toContain("href=\"/api/checkout");
   });
 
+  it("explains trial cancellation, paid cancellation and the first-payment refund", () => {
+    const html = renderToStaticMarkup(<Home />);
+
+    expect(html).toContain("Disdetta durante la prova: nessun primo addebito");
+    expect(html).toContain("stop ai rinnovi, accesso fino alla fine del periodo già pagato");
+    expect(html).toContain("Garanzia volontaria di 7 giorni sul primo pagamento");
+    expect(html).toContain("la sola disdetta non comporterà automaticamente un rimborso");
+  });
+
   it("includes the complete illustrative calculation and its limitations", () => {
     const html = renderToStaticMarkup(<Home />);
 
