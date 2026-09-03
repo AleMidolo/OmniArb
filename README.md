@@ -18,6 +18,29 @@ customer funds or provide an alerts dashboard.
 - In `PRE_LAUNCH`, the CTA is **“Prossimamente”** and no trial, payment method
   or paid subscription may be activated.
 
+## Local development
+
+Requirements: Node.js 22.13 or newer.
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+The safe default is `OMNIARB_MODE=PRE_LAUNCH`. In this increment, even an
+explicit `COMMERCIAL` value does not expose checkout: the server route remains
+fail-closed until OMNI-004 and the documented launch gates are complete.
+The analytics adapter is also intentionally disabled until its consent and
+retention design receives privacy approval.
+
+## Validation
+
+```bash
+npm run check
+npm run test:e2e
+```
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)
