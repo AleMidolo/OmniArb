@@ -41,7 +41,9 @@ jobs:
           cache: npm
 
       - name: Use pinned npm
-        run: npm install --global npm@${NPM_VERSION}
+        run: |
+          npm install --global npm@${NPM_VERSION}
+          npm config set allow-scripts=unrs-resolver,sharp,workerd,esbuild --location=user
 
       - name: Install application dependencies
         run: npm ci
@@ -102,7 +104,9 @@ jobs:
           cache: npm
 
       - name: Use pinned npm
-        run: npm install --global npm@${NPM_VERSION}
+        run: |
+          npm install --global npm@${NPM_VERSION}
+          npm config set allow-scripts=unrs-resolver,sharp,workerd,esbuild --location=user
 
       - name: Install application dependencies
         run: npm ci
@@ -147,7 +151,9 @@ jobs:
           cache: npm
 
       - name: Use pinned npm
-        run: npm install --global npm@${NPM_VERSION}
+        run: |
+          npm install --global npm@${NPM_VERSION}
+          npm config set allow-scripts=unrs-resolver,sharp,workerd,esbuild --location=user
 
       - name: Install application dependencies
         run: npm ci
