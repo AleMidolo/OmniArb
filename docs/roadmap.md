@@ -1,7 +1,7 @@
 # OmniArb — Product Roadmap
 
 **Owner:** Project Manager / Product Owner  
-**Status:** Active — M0/M1 complete; M2 is the current delivery milestone  
+**Status:** Active — M0/M1 complete; M2 implementation accepted and awaiting public release setup  
 **Scope:** Italian MVP, Italy-only B2C launch
 
 ---
@@ -17,7 +17,7 @@
 7. Architecture must be established before production implementation.
 8. Every development task must be independently testable.
 9. QA determines whether acceptance criteria are satisfied.
-10. Production deployment and merge approval follow the repository's human-approval rules.
+10. Informational deployment does not imply commercial activation.
 
 ---
 
@@ -25,54 +25,17 @@
 
 ### M0 — Product baseline
 
-**Goal:** Persist the product decisions and prepare an architecture-ready backlog.
-
-**Includes:**
-- `docs/product-requirements.md`
-- `docs/roadmap.md`
-- `docs/user-flows.md`
-- `docs/backlog.md`
-- feature specifications under `specs/`
-
-**Exit criteria:**
-- confirmed requirements are distinguished from assumptions and deferred items;
-- commercial policies are documented;
-- Telegram/bot scope boundary is explicit;
-- feature dependencies are recorded.
-
 **Status:** COMPLETE — merged into `main`.
+
+Product requirements, roadmap, backlog, user flows and feature specifications are persisted and distinguish confirmed requirements from assumptions/deferred decisions.
 
 ---
 
 ### M1 — Architecture baseline
 
-**Goal:** Convert approved product requirements into a technical design without redefining them.
+**Status:** COMPLETE — architecture baseline and ADRs merged via PR #1 and refined by PR #8.
 
-**Architect must address at minimum:**
-- frontend/application architecture;
-- hosting/deployment model;
-- Stripe subscription/trial lifecycle;
-- entitlement state model;
-- Telegram identity association;
-- automated onboarding plus manual fallback;
-- reliable seven-actual-day trial start;
-- cancellation/refund/failed-payment state transitions;
-- self-service subscription management;
-- transactional email;
-- analytics/privacy integration boundaries;
-- security controls and secret handling;
-- persistence/data-minimization needs;
-- failure recovery and idempotency;
-- test strategy;
-- commercial-launch feature flags/gating.
-
-**Exit criteria:**
-- architectural decisions are persisted in the repository;
-- external Telegram-service prerequisites are explicit;
-- no unresolved product decision is silently converted into a technical assumption.
-
-**Dependency:** M0.  
-**Status:** COMPLETE — architecture baseline and ADRs merged via PR #1.
+The approved architecture defines the modular-monolith boundary, Stripe lifecycle, entitlement model, Telegram integration boundary, security controls, persistence, failure recovery, testing strategy and commercial gating.
 
 ---
 
@@ -82,25 +45,21 @@
 
 **Commercial state:** `PRE_LAUNCH`
 
-**Required behavior:**
-- full educational landing page;
-- static arbitrage example;
-- real anonymized screenshot slots and explanatory mockups;
-- €50/month and seven-day trial offer may be explained;
-- CTA shows **"Prossimamente"**;
-- no trial activation;
-- no payment collection;
-- no waiting list;
-- legal/risk information appropriate for a non-commercial informational launch;
-- minimal analytics where legally ready.
+**Implementation status:** COMPLETE AND QA ACCEPTED.
 
-**Exit criteria:**
-- responsive and accessible landing experience passes QA;
-- no live subscription path is reachable;
-- claims comply with the approved product wording rules.
+PR #9 implemented the Italian landing experience, static arbitrage example, explanatory Telegram mockups/placeholders, pricing/trial/risk content, server-side fail-closed commercial gate, disabled analytics adapter, responsive/accessibility hardening and persistent CI/browser validation.
 
-**Dependencies:** M1.  
-**Status:** READY FOR DEVELOPMENT — `PRE_LAUNCH` only.
+Independent QA passed on head `f2d1eadd460c2497715bfff5b38e627a1768130c`; architecture review also passed. PR #9 merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
+
+**Release status:** BLOCKED ONLY ON PUBLICATION INFRASTRUCTURE — issue #11 tracks Vercel project/account initialization and publication of the merged informational build.
+
+**M2 exit criteria after release:**
+- the merged `PRE_LAUNCH` site is publicly reachable;
+- CTA remains `Prossimamente`;
+- no live subscription/payment/Telegram commercial path is reachable;
+- release verification confirms the fail-closed checkout route and healthy runtime/build logs.
+
+The M2 implementation itself must not be reopened unless release verification finds a defect.
 
 ---
 
@@ -119,39 +78,17 @@
 - commercial email copy approved;
 - operational manual-onboarding fallback documented.
 
-**Exit criteria:**
-- PM confirms all product/legal prerequisites are satisfied;
-- Architect confirms Telegram fulfillment dependency is technically ready;
-- QA has testable environments/data for billing and onboarding.
-
-**Dependencies:** M1. Can progress in parallel with M2.  
 **Status:** BLOCKED — product-owner, legal and external-service inputs remain open.
 
 ---
 
 ### M4 — Subscription, billing and entitlement
 
-**Goal:** Implement the €50/month subscription and seven-day full-access trial without yet declaring commercial launch complete.
+**Goal:** Implement the €50/month subscription and seven-day full-access trial.
 
-**Required behavior:**
-- payment method captured at trial activation;
-- first charge only after seven actual days of available service;
-- one free trial per customer;
-- cancellation lifecycle;
-- first-payment seven-day no-questions-asked refund policy;
-- refund terminates entitlement;
-- three-day failed-payment grace period;
-- self-service subscription management;
-- 24–48 hour first-charge reminder;
-- authoritative server-side entitlement state.
+**Status:** BLOCKED — M3 prerequisites, PRE-003 and commercial test readiness required.
 
-**Exit criteria:**
-- all billing acceptance criteria pass in test mode;
-- unauthorized users cannot create entitlement through frontend manipulation;
-- lifecycle edge cases are verified by QA.
-
-**Dependencies:** M1 and relevant items from M3.  
-**Status:** BLOCKED — M3 prerequisites and commercial test readiness required.
+Required behavior remains: payment method at trial activation, seven actual service days before first charge, one trial per customer, cancellation/refund lifecycle, three-day failed-payment grace period, self-service management, first-charge reminder and authoritative server-side entitlement.
 
 ---
 
@@ -159,25 +96,9 @@
 
 **Goal:** Complete the end-to-end commercial journey.
 
-**Required behavior:**
-- email + one Telegram identity associated before/during checkout;
-- entitled customer normally receives automated Telegram onboarding;
-- onboarding information shown immediately on the website;
-- onboarding information also sent by email;
-- manual fallback exists;
-- customer receives seven actual days of service;
-- cancellation/refund/payment-failure changes ultimately affect access according to product rules;
-- one active Telegram identity per subscription;
-- support-assisted identity change.
-
-**Exit criteria:**
-- end-to-end trial activation reaches working Telegram service;
-- failure paths do not create false entitlement;
-- manual fallback is tested;
-- access lifecycle aligns with billing lifecycle.
-
-**Dependencies:** M3 and M4.  
 **Status:** BLOCKED — external Telegram provisioning contract is not yet verified.
+
+Commercial launch requires verified identity linking, automated provisioning/revocation, onboarding confirmation, email fallback, manual fallback, lifecycle alignment and one active Telegram identity per subscription.
 
 ---
 
@@ -186,181 +107,100 @@
 **Goal:** Enable trial and paid subscriptions for eligible Italian B2C customers.
 
 **Launch gate — ALL required:**
-- M2 complete;
+- M2 publicly released in `PRE_LAUNCH`;
 - M3 complete;
 - M4 complete;
 - M5 complete;
-- legal seller information live;
-- approved legal/privacy/customer content live;
+- legal seller information and reviewed legal/privacy/customer content live;
 - support email operational;
-- production payment configuration approved;
-- production Telegram fulfillment approved;
+- production payment and Telegram fulfillment configuration approved;
 - analytics/privacy setup approved;
 - security review complete;
-- QA passes;
-- human approval for production deployment/merge obtained.
+- end-to-end commercial QA passes;
+- explicit human approval for commercial activation.
 
-**Commercial state change:**
-- Replace `Prossimamente` CTA with active trial CTA only after the launch gate is satisfied.
+**Status:** BLOCKED.
 
-**Status:** BLOCKED — all launch-gate items remain mandatory.
+The `Prossimamente` CTA must not be replaced with an active trial action before this gate is satisfied.
 
 ---
 
 ### M7 — Post-launch validation
 
-**Goal:** Measure funnel health and correct high-impact defects without expanding scope prematurely.
-
-**Observe:**
-- landing-page engagement;
-- pricing/trial interaction;
-- trial-start success;
-- onboarding success/failure;
-- subscription activation;
-- cancellation;
-- payment failures;
-- refund requests;
-- support volume.
-
 **Status:** NOT STARTED.
 
-**Possible future decisions, not pre-approved features:**
-- English localization;
-- expansion beyond Italy;
-- additional pricing tiers;
-- annual plan;
-- interactive calculator;
-- customer testimonials;
-- verified performance/statistics presentation;
-- B2B plans;
-- multi-user plans;
-- customer dashboard;
-- additional support channels;
-- marketing/retargeting integrations.
+After commercial launch, observe landing engagement, trial starts, onboarding success/failure, subscription activation, cancellation, payment failures, refund requests and support volume before expanding scope.
 
 ---
 
 ## 3. Feature backlog summary
 
-Detailed, independently testable work packages and current dependencies are
-maintained in `docs/backlog.md`.
-
 | ID | Title | Priority | Milestone | Status |
 |---|---|---:|---|---|
 | OMNI-001 | Persist product baseline documentation | P0 | M0 | COMPLETE |
-| OMNI-002 | Italian conversion-focused showcase landing page | P0 | M2 | READY FOR DEVELOPMENT — `PRE_LAUNCH` |
+| OMNI-002 | Italian conversion-focused showcase landing page | P0 | M2 | COMPLETE / QA ACCEPTED |
 | OMNI-003 | Subscription and trial lifecycle | P0 | M4 | BLOCKED — M3 and Telegram contract |
 | OMNI-004 | Stripe checkout and subscription management | P0 | M4 | BLOCKED — OMNI-003 and seller/Stripe readiness |
 | OMNI-005 | Telegram identity and customer onboarding | P0 | M5 | BLOCKED — external Telegram readiness |
-| OMNI-006 | Legal, trust, eligibility and risk presentation | P0 | M2/M3/M6 | PRE-LAUNCH READY; COMMERCIAL BLOCKED |
-| OMNI-007 | Minimal conversion analytics | P1 | M2/M6 | ADAPTER READY; ENABLEMENT BLOCKED |
+| OMNI-006 | Legal, trust, eligibility and risk presentation | P0 | M2/M3/M6 | PRE-LAUNCH IMPLEMENTED; COMMERCIAL BLOCKED |
+| OMNI-007 | Minimal conversion analytics | P1 | M2/M6 | ADAPTER COMPLETE/DISABLED; ENABLEMENT BLOCKED |
 | OMNI-008 | Commercial launch gate | P0 | M6 | BLOCKED until all prerequisites pass |
+| REL-001 / #11 | Publish M2 informational site on Vercel | P0 | M2 | BLOCKED — Vercel project/account initialization |
 
 ---
 
-## 4. Feature sequencing
+## 4. Current sequencing
 
 ```text
-OMNI-001 Product baseline
+M0 Product baseline ........ COMPLETE
         |
-        v
-Architecture baseline
+M1 Architecture ............ COMPLETE
         |
-        +--------------------+
-        |                    |
-        v                    v
-OMNI-002 Landing         OMNI-006 Legal/trust
-        |                    |
-        +----------+---------+
-                   |
-       M2 Informational launch
-                   |
-                   +-----------------------------+
-                                                 |
-Commercial prerequisites -----------------------+
-                                                 |
-OMNI-003 Subscription/trial
+M2 implementation .......... COMPLETE + QA/architecture PASS
         |
-        v
-OMNI-004 Stripe + management
+M2 public PRE_LAUNCH release ----> issue #11 / Release-DevOps
         |
-        v
-OMNI-005 Telegram onboarding
+        +------------------------------+
+                                       |
+M3 commercial prerequisites ----------+
         |
-        +--------> OMNI-007 Analytics/privacy
-                         |
-                         v
-                   OMNI-008 Launch gate
-                         |
-                         v
-                   Commercial launch
+M4 subscription/billing
+        |
+M5 Telegram fulfillment
+        |
+M6 commercial launch gate
+        |
+M7 post-launch validation
 ```
 
 ---
 
-## 5. Explicit launch blockers
+## 5. Explicit commercial blockers
 
-The following are **not optional backlog polish**; they block commercial activation:
+The following remain mandatory before commercial activation:
 
 - seller legal identity remains undefined;
 - legal/privacy/customer terms have not been reviewed;
 - Italy-only eligibility rule is not finalized;
-- Telegram customer fulfillment is not ready;
-- trial cannot reliably deliver seven actual days of service;
-- payment entitlement cannot be authoritatively verified server-side;
-- cancellation/refund/failed-payment behavior is not implemented and tested;
+- age/compliance method is not finalized;
+- Telegram customer fulfillment contract is not verified;
+- trial cannot yet be proven to deliver seven actual days of service end-to-end;
+- payment entitlement lifecycle is not implemented/tested;
 - support email is not operational;
+- commercial analytics/privacy rules are not approved;
 - QA has not passed end-to-end commercial flows;
-- human approval has not been obtained.
+- explicit commercial activation approval has not been obtained.
 
 ---
 
 ## 6. Intentionally deferred roadmap items
 
-No task should be created automatically for the following without a new PM decision:
-
-- English language.
-- International expansion.
-- B2B subscriptions.
-- Annual/multi-tier pricing.
-- Customer dashboard.
-- Interactive calculator.
-- Waiting list/newsletter.
-- Testimonials.
-- Historical performance marketing.
-- Multi-user plans.
-- Telegram support channel.
-- Automatic betting/execution.
+No task should be created automatically for English localization, international expansion, B2B subscriptions, annual/multi-tier pricing, customer dashboards, interactive calculators, waiting lists/newsletters, testimonials, historical-performance marketing, multi-user plans, Telegram support channels or automatic betting/execution.
 
 ---
 
-## 7. Developer handoff
+## 7. Current handoff
 
-The architecture baseline is complete. The next implementation owner is the
-**Developer**, beginning with OMNI-002 in `PRE_LAUNCH` mode.
+No further M2 application implementation is currently required. The highest-priority workflow item is issue #11: initialize/link the Vercel project and publish the already-merged informational site in `PRE_LAUNCH`, without configuring commercial credentials or enabling commerce.
 
-The current developer-ready packages are:
-
-- OMNI-002A through OMNI-002E;
-- OMNI-007A, implemented as a provider-neutral adapter that remains disabled by
-  default.
-
-OMNI-002F and OMNI-002G follow within the same M2 increment after their listed
-dependencies. See `docs/backlog.md` for acceptance criteria and
-`docs/user-flows.md` for journey-level behavior.
-
-The Developer must not:
-
-- introduce a web dashboard or password account;
-- reimplement the arbitrage algorithm;
-- enable checkout, payment collection or Telegram commercial provisioning in
-  `PRE_LAUNCH`;
-- fabricate seller/legal details, testimonials, screenshots or performance
-  evidence;
-- add English localization, an interactive calculator or a waiting list.
-
-OMNI-003 through OMNI-005 remain blocked for production implementation until the
-external Telegram provisioning contract and M3 commercial prerequisites are
-verified.
-
-**READY FOR DEVELOPMENT — OMNI-002 / PRE-LAUNCH WEBSITE**
+**NEXT DELIVERY OWNER: RELEASE / DEVOPS — ISSUE #11.**

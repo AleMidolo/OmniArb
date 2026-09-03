@@ -12,7 +12,7 @@ customer funds or provide an alerts dashboard.
 
 - M0 product baseline: complete.
 - M1 architecture baseline: complete.
-- M2 Italian informational website: ready for development in `PRE_LAUNCH`.
+- M2 Italian informational website: implementation complete, QA/architecture passed, and merged to `main` in `PRE_LAUNCH`; public Vercel publication remains blocked on project/account initialization tracked in issue #11.
 - Commercial billing and Telegram fulfillment: blocked until legal, operational,
   external-service and QA launch gates are complete.
 - In `PRE_LAUNCH`, the CTA is **“Prossimamente”** and no trial, payment method
