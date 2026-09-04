@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 25
     env:
       PLAYWRIGHT_BASE_URL: https://pr-${{ github.event.pull_request.number }}-omniarb-prelaunch.alemidolo.workers.dev
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,7 +48,7 @@ jobs:
 
           for _ in $(seq 1 60); do
             run_id="$(gh api \
-              "repos/${GITHUB_REPOSITORY}/actions/workflows/cloudflare.yml/runs?event=pull_request&head_sha=${GITHUB_SHA}&per_page=20" \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/cloudflare.yml/runs?event=pull_request&head_sha=${PR_HEAD_SHA}&per_page=20" \
               --jq '.workflow_runs[0].id // empty')"
 
             if [[ -n "${run_id}" ]]; then
