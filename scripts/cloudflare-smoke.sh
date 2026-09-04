@@ -2,12 +2,15 @@
 set -euo pipefail
 
 PORT="${PORT:-8787}"
-BASE_URL="http://127.0.0.1:${PORT}"
 LOG_FILE="${RUNNER_TEMP:-/tmp}/omniarb-wrangler.log"
+WRANGLER_PID=""
 
-npx wrangler dev --config dist/server/wrangler.json --local --port "${PORT}" >"${LOG_FILE}" 2>&1 &
-WRANGLER_PID=$!
-trap 'kill "${WRANGLER_PID}" 2>/dev/null || true' EXIT
+if [[ -z "${BASE_URL:-}" ]]; then
+  BASE_URL="http://127.0.0.1:${PORT}"
+  npx wrangler dev --config dist/server/wrangler.json --local --port "${PORT}" >"${LOG_FILE}" 2>&1 &
+  WRANGLER_PID=$!
+  trap 'kill "${WRANGLER_PID}" 2>/dev/null || true' EXIT
+fi
 
 READY=false
 for _ in $(seq 1 40); do
@@ -15,15 +18,17 @@ for _ in $(seq 1 40); do
     READY=true
     break
   fi
-  if ! kill -0 "${WRANGLER_PID}" 2>/dev/null; then
+  if [[ -n "${WRANGLER_PID}" ]] && ! kill -0 "${WRANGLER_PID}" 2>/dev/null; then
     break
   fi
   sleep 1
 done
 
 if [[ "${READY}" != "true" ]]; then
-  echo "Wrangler failed to start the local Worker." >&2
-  cat "${LOG_FILE}" >&2
+  echo "Cloudflare Worker did not become reachable at ${BASE_URL}." >&2
+  if [[ -n "${WRANGLER_PID}" && -f "${LOG_FILE}" ]]; then
+    cat "${LOG_FILE}" >&2
+  fi
   exit 1
 fi
 
