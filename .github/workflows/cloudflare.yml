@@ -267,10 +267,21 @@ jobs:
 
       - name: Upload version with stable PR alias
         if: steps.cloudflare.outputs.available == 'true'
+        id: preview
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: >-
-          npx wrangler versions upload
-          --config dist/server/wrangler.json
-          --preview-alias pr-${{ github.event.pull_request.number }}
+        run: |
+          set -o pipefail
+          npx wrangler versions upload \
+            --config dist/server/wrangler.json \
+            --preview-alias pr-${{ github.event.pull_request.number }} | tee wrangler-preview.txt
+          PREVIEW_URL="$(sed -n 's/^Version Preview Alias URL: //p' wrangler-preview.txt | tail -1)"
+          test -n "${PREVIEW_URL}"
+          echo "url=${PREVIEW_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Hosted PRE_LAUNCH Worker smoke tests
+        if: steps.cloudflare.outputs.available == 'true'
+        env:
+          BASE_URL: ${{ steps.preview.outputs.url }}
+        run: bash scripts/cloudflare-smoke.sh
