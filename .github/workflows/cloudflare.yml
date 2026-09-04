@@ -1,0 +1,341 @@
+name: Cloudflare Workers
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OMNIARB_MODE: PRE_LAUNCH
+  NPM_VERSION: 11.19.1
+  VINEXT_VERSION: 1.0.0-beta.9
+  VINEXT_CLOUDFLARE_VERSION: 1.0.0-beta.7
+  CLOUDFLARE_VITE_PLUGIN_VERSION: 1.31.0
+  VITE_VERSION: 8.0.0
+  VITE_RSC_VERSION: 0.5.34
+  REACT_SERVER_DOM_WEBPACK_VERSION: 19.2.8
+  WRANGLER_VERSION: 4.80.0
+
+jobs:
+  application-validate:
+    name: Application lint, typecheck, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  browser-validate:
+    name: Application Playwright (desktop + mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-gate-playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  worker-validate:
+    name: vinext check, build, Worker smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Use pinned npm
+        run: |
+          npm install --global npm@${NPM_VERSION}
+          npm config set allow-scripts=unrs-resolver,sharp,workerd,esbuild --location=user
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Cloudflare migration toolchain
+        run: >-
+          npm install --no-save --package-lock=false
+          vinext@${VINEXT_VERSION}
+          @vinext/cloudflare@${VINEXT_CLOUDFLARE_VERSION}
+          @cloudflare/vite-plugin@${CLOUDFLARE_VITE_PLUGIN_VERSION}
+          vite@${VITE_VERSION}
+          @vitejs/plugin-rsc@${VITE_RSC_VERSION}
+          react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
+          wrangler@${WRANGLER_VERSION}
+
+      - name: vinext compatibility check
+        run: npx vinext check | tee vinext-check.txt
+
+      - name: vinext production build
+        run: npx vinext build
+
+      - name: Record Worker bundle size
+        run: |
+          test -d dist/server
+          du -sh dist/server | tee worker-size.txt
+          find dist/server -type f -printf '%s %p\n' | sort -nr | head -20 >> worker-size.txt
+          cat worker-size.txt
+
+      - name: Local Worker runtime smoke tests
+        run: bash scripts/cloudflare-smoke.sh
+
+      - name: Upload compatibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-compatibility
+          path: |
+            vinext-check.txt
+            worker-size.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  deploy-main:
+    name: Deploy stable PRE_LAUNCH Worker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - application-validate
+      - browser-validate
+      - worker-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pre-launch
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Use pinned npm
+        run: |
+          npm install --global npm@${NPM_VERSION}
+          npm config set allow-scripts=unrs-resolver,sharp,workerd,esbuild --location=user
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install pinned Cloudflare migration toolchain
+        run: >-
+          npm install --no-save --package-lock=false
+          vinext@${VINEXT_VERSION}
+          @vinext/cloudflare@${VINEXT_CLOUDFLARE_VERSION}
+          @cloudflare/vite-plugin@${CLOUDFLARE_VITE_PLUGIN_VERSION}
+          vite@${VITE_VERSION}
+          @vitejs/plugin-rsc@${VITE_RSC_VERSION}
+          react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
+          wrangler@${WRANGLER_VERSION}
+
+      - name: Build Worker
+        run: npx vinext build
+
+      - name: Deploy stable Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy --config dist/server/wrangler.json
+
+  deploy-pr-preview:
+    name: Upload PR preview Worker
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs:
+      - application-validate
+      - browser-validate
+      - worker-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pre-launch
+    steps:
+      - name: Check Cloudflare bootstrap
+        id: cloudflare
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -n "${CLOUDFLARE_ACCOUNT_ID}" && -n "${CLOUDFLARE_API_TOKEN}" ]]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Cloudflare preview upload skipped until issue #11 bootstrap credentials are configured."
+          fi
+
+      - name: Checkout
+        if: steps.cloudflare.outputs.available == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.cloudflare.outputs.available == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Use pinned npm
+        if: steps.cloudflare.outputs.available == 'true'
+        run: |
+          npm install --global npm@${NPM_VERSION}
+          npm config set allow-scripts=unrs-resolver,sharp,workerd,esbuild --location=user
+
+      - name: Install application dependencies
+        if: steps.cloudflare.outputs.available == 'true'
+        run: npm ci
+
+      - name: Install pinned Cloudflare migration toolchain
+        if: steps.cloudflare.outputs.available == 'true'
+        run: >-
+          npm install --no-save --package-lock=false
+          vinext@${VINEXT_VERSION}
+          @vinext/cloudflare@${VINEXT_CLOUDFLARE_VERSION}
+          @cloudflare/vite-plugin@${CLOUDFLARE_VITE_PLUGIN_VERSION}
+          vite@${VITE_VERSION}
+          @vitejs/plugin-rsc@${VITE_RSC_VERSION}
+          react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
+          wrangler@${WRANGLER_VERSION}
+
+      - name: Build Worker
+        if: steps.cloudflare.outputs.available == 'true'
+        run: npx vinext build
+
+      - name: Verify generated deployment config
+        if: steps.cloudflare.outputs.available == 'true'
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('dist/server/wrangler.json', 'utf8'));
+          const summary = {
+            name: config.name,
+            main: config.main,
+            compatibility_date: config.compatibility_date,
+            compatibility_flags: config.compatibility_flags,
+            workers_dev: config.workers_dev,
+            preview_urls: config.preview_urls,
+            OMNIARB_MODE: config.vars?.OMNIARB_MODE,
+          };
+          console.log(JSON.stringify(summary, null, 2));
+          if (summary.name !== 'omniarb-prelaunch') throw new Error('Unexpected Worker name');
+          if (summary.workers_dev !== true) throw new Error('workers_dev must be true');
+          if (summary.preview_urls !== true) throw new Error('preview_urls must be true');
+          if (summary.OMNIARB_MODE !== 'PRE_LAUNCH') throw new Error('OMNIARB_MODE must remain PRE_LAUNCH');
+          if (!summary.compatibility_flags?.includes('nodejs_compat')) throw new Error('nodejs_compat missing');
+          if (!summary.compatibility_flags?.includes('global_fetch_strictly_public')) {
+            throw new Error('global_fetch_strictly_public missing');
+          }
+          NODE
+
+      - name: Apply Worker preview routing
+        if: steps.cloudflare.outputs.available == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler triggers deploy --config dist/server/wrangler.json
+
+      - name: Upload version with stable PR alias
+        if: steps.cloudflare.outputs.available == 'true'
+        id: preview
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx wrangler versions upload \
+            --config dist/server/wrangler.json \
+            --preview-alias pr-${{ github.event.pull_request.number }} | tee wrangler-preview.txt
+          VERSION_URL="$(sed -n 's/^Version Preview URL: //p' wrangler-preview.txt | tail -1)"
+          ALIAS_URL="$(sed -n 's/^Version Preview Alias URL: //p' wrangler-preview.txt | tail -1)"
+          test -n "${VERSION_URL}"
+          test -n "${ALIAS_URL}"
+          echo "version_url=${VERSION_URL}" >> "${GITHUB_OUTPUT}"
+          echo "alias_url=${ALIAS_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Compare version and alias application endpoints
+        if: steps.cloudflare.outputs.available == 'true'
+        env:
+          VERSION_URL: ${{ steps.preview.outputs.version_url }}
+          ALIAS_URL: ${{ steps.preview.outputs.alias_url }}
+        run: |
+          probe() {
+            local label="$1"
+            local url="$2"
+            local headers body status
+            headers="$(mktemp)"
+            body="$(mktemp)"
+            status="$(curl --silent --show-error --max-time 15 \
+              --dump-header "${headers}" \
+              --output "${body}" \
+              --write-out '%{http_code}' \
+              "${url}/" || true)"
+            echo "=== ${label}: ${url} ==="
+            echo "HTTP ${status}"
+            grep -Ei '^(server|cf-ray|content-type|cache-control):' "${headers}" || true
+            sed -n '1,20p' "${body}" || true
+          }
+          probe "version" "${VERSION_URL}"
+          probe "alias" "${ALIAS_URL}"
+
+      - name: Hosted PRE_LAUNCH Worker smoke tests
+        if: steps.cloudflare.outputs.available == 'true'
+        env:
+          BASE_URL: ${{ steps.preview.outputs.alias_url }}
+        run: bash scripts/cloudflare-smoke.sh
