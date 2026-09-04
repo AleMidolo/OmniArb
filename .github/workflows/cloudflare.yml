@@ -266,6 +266,7 @@ jobs:
           const config = JSON.parse(fs.readFileSync('dist/server/wrangler.json', 'utf8'));
           const summary = {
             name: config.name,
+            main: config.main,
             compatibility_date: config.compatibility_date,
             compatibility_flags: config.compatibility_flags,
             workers_dev: config.workers_dev,
@@ -308,7 +309,7 @@ jobs:
           echo "version_url=${VERSION_URL}" >> "${GITHUB_OUTPUT}"
           echo "alias_url=${ALIAS_URL}" >> "${GITHUB_OUTPUT}"
 
-      - name: Compare version and alias endpoints
+      - name: Compare pre-vinext health and application endpoints
         if: steps.cloudflare.outputs.available == 'true'
         env:
           VERSION_URL: ${{ steps.preview.outputs.version_url }}
@@ -317,6 +318,7 @@ jobs:
           probe() {
             local label="$1"
             local url="$2"
+            local path="$3"
             local headers body status
             headers="$(mktemp)"
             body="$(mktemp)"
@@ -324,14 +326,16 @@ jobs:
               --dump-header "${headers}" \
               --output "${body}" \
               --write-out '%{http_code}' \
-              "${url}/" || true)"
-            echo "=== ${label}: ${url} ==="
+              "${url}${path}" || true)"
+            echo "=== ${label}${path}: ${url}${path} ==="
             echo "HTTP ${status}"
             grep -Ei '^(server|cf-ray|content-type|cache-control):' "${headers}" || true
             sed -n '1,20p' "${body}" || true
           }
-          probe "version" "${VERSION_URL}"
-          probe "alias" "${ALIAS_URL}"
+          probe "version" "${VERSION_URL}" "/__omniarb-worker-health"
+          probe "version" "${VERSION_URL}" "/"
+          probe "alias" "${ALIAS_URL}" "/__omniarb-worker-health"
+          probe "alias" "${ALIAS_URL}" "/"
 
       - name: Hosted PRE_LAUNCH Worker smoke tests
         if: steps.cloudflare.outputs.available == 'true'
