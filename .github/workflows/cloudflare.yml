@@ -258,6 +258,31 @@ jobs:
         if: steps.cloudflare.outputs.available == 'true'
         run: npx vinext build
 
+      - name: Verify generated deployment config
+        if: steps.cloudflare.outputs.available == 'true'
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('dist/server/wrangler.json', 'utf8'));
+          const summary = {
+            name: config.name,
+            compatibility_date: config.compatibility_date,
+            compatibility_flags: config.compatibility_flags,
+            workers_dev: config.workers_dev,
+            preview_urls: config.preview_urls,
+            OMNIARB_MODE: config.vars?.OMNIARB_MODE,
+          };
+          console.log(JSON.stringify(summary, null, 2));
+          if (summary.name !== 'omniarb-prelaunch') throw new Error('Unexpected Worker name');
+          if (summary.workers_dev !== true) throw new Error('workers_dev must be true');
+          if (summary.preview_urls !== true) throw new Error('preview_urls must be true');
+          if (summary.OMNIARB_MODE !== 'PRE_LAUNCH') throw new Error('OMNIARB_MODE must remain PRE_LAUNCH');
+          if (!summary.compatibility_flags?.includes('nodejs_compat')) throw new Error('nodejs_compat missing');
+          if (!summary.compatibility_flags?.includes('global_fetch_strictly_public')) {
+            throw new Error('global_fetch_strictly_public missing');
+          }
+          NODE
+
       - name: Apply Worker preview routing
         if: steps.cloudflare.outputs.available == 'true'
         env:
@@ -276,12 +301,40 @@ jobs:
           npx wrangler versions upload \
             --config dist/server/wrangler.json \
             --preview-alias pr-${{ github.event.pull_request.number }} | tee wrangler-preview.txt
-          PREVIEW_URL="$(sed -n 's/^Version Preview Alias URL: //p' wrangler-preview.txt | tail -1)"
-          test -n "${PREVIEW_URL}"
-          echo "url=${PREVIEW_URL}" >> "${GITHUB_OUTPUT}"
+          VERSION_URL="$(sed -n 's/^Version Preview URL: //p' wrangler-preview.txt | tail -1)"
+          ALIAS_URL="$(sed -n 's/^Version Preview Alias URL: //p' wrangler-preview.txt | tail -1)"
+          test -n "${VERSION_URL}"
+          test -n "${ALIAS_URL}"
+          echo "version_url=${VERSION_URL}" >> "${GITHUB_OUTPUT}"
+          echo "alias_url=${ALIAS_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Compare version and alias endpoints
+        if: steps.cloudflare.outputs.available == 'true'
+        env:
+          VERSION_URL: ${{ steps.preview.outputs.version_url }}
+          ALIAS_URL: ${{ steps.preview.outputs.alias_url }}
+        run: |
+          probe() {
+            local label="$1"
+            local url="$2"
+            local headers body status
+            headers="$(mktemp)"
+            body="$(mktemp)"
+            status="$(curl --silent --show-error --max-time 15 \
+              --dump-header "${headers}" \
+              --output "${body}" \
+              --write-out '%{http_code}' \
+              "${url}/" || true)"
+            echo "=== ${label}: ${url} ==="
+            echo "HTTP ${status}"
+            grep -Ei '^(server|cf-ray|content-type|cache-control):' "${headers}" || true
+            sed -n '1,20p' "${body}" || true
+          }
+          probe "version" "${VERSION_URL}"
+          probe "alias" "${ALIAS_URL}"
 
       - name: Hosted PRE_LAUNCH Worker smoke tests
         if: steps.cloudflare.outputs.available == 'true'
         env:
-          BASE_URL: ${{ steps.preview.outputs.url }}
+          BASE_URL: ${{ steps.preview.outputs.alias_url }}
         run: bash scripts/cloudflare-smoke.sh
