@@ -1,0 +1,63 @@
+name: Stable PRE_LAUNCH Release Smoke
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: stable-release-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stable-release-smoke:
+    name: Stable Worker release smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for exact-main Cloudflare deployment
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          status=""
+          conclusion=""
+
+          for _ in $(seq 1 60); do
+            run_id="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/cloudflare.yml/runs?event=push&head_sha=${MAIN_SHA}&per_page=20" \
+              --jq '.workflow_runs[0].id // empty')"
+
+            if [[ -n "${run_id}" ]]; then
+              status="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.status')"
+              conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.conclusion // empty')"
+              echo "Cloudflare main run ${run_id}: status=${status} conclusion=${conclusion:-pending}"
+
+              if [[ "${status}" == "completed" ]]; then
+                test "${conclusion}" = "success"
+                break
+              fi
+            fi
+
+            sleep 5
+          done
+
+          test -n "${run_id}"
+          test "${status}" = "completed"
+          test "${conclusion}" = "success"
+
+      - name: Verify stable PRE_LAUNCH Worker
+        env:
+          BASE_URL: https://omniarb-prelaunch.alemidolo.workers.dev
+        run: bash scripts/cloudflare-smoke.sh
