@@ -258,6 +258,13 @@ jobs:
         if: steps.cloudflare.outputs.available == 'true'
         run: npx vinext build
 
+      - name: Apply Worker preview routing
+        if: steps.cloudflare.outputs.available == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler triggers deploy --config dist/server/wrangler.json
+
       - name: Upload version with stable PR alias
         if: steps.cloudflare.outputs.available == 'true'
         env:
