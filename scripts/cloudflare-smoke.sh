@@ -13,20 +13,40 @@ if [[ -z "${BASE_URL:-}" ]]; then
 fi
 
 READY=false
+LAST_STATUS="000"
+LAST_HEADERS="$(mktemp)"
+LAST_BODY="$(mktemp)"
+
 for _ in $(seq 1 40); do
-  if curl --silent --fail --max-time 2 "${BASE_URL}/" >/dev/null; then
+  : >"${LAST_HEADERS}"
+  : >"${LAST_BODY}"
+  LAST_STATUS="$(curl --silent --show-error --max-time 5 \
+    --dump-header "${LAST_HEADERS}" \
+    --output "${LAST_BODY}" \
+    --write-out '%{http_code}' \
+    "${BASE_URL}/" || true)"
+
+  if [[ "${LAST_STATUS}" =~ ^2[0-9][0-9]$ ]]; then
     READY=true
     break
   fi
+
   if [[ -n "${WRANGLER_PID}" ]] && ! kill -0 "${WRANGLER_PID}" 2>/dev/null; then
     break
   fi
+
   sleep 1
 done
 
 if [[ "${READY}" != "true" ]]; then
   echo "Cloudflare Worker did not become reachable at ${BASE_URL}." >&2
+  echo "Last HTTP status: ${LAST_STATUS}" >&2
+  echo "--- response headers ---" >&2
+  cat "${LAST_HEADERS}" >&2 || true
+  echo "--- response body (first 80 lines) ---" >&2
+  sed -n '1,80p' "${LAST_BODY}" >&2 || true
   if [[ -n "${WRANGLER_PID}" && -f "${LOG_FILE}" ]]; then
+    echo "--- local Wrangler log ---" >&2
     cat "${LOG_FILE}" >&2
   fi
   exit 1
@@ -34,7 +54,12 @@ fi
 
 HOME_HEADERS="$(mktemp)"
 HOME_BODY="$(mktemp)"
-curl --silent --show-error --max-time 10 --dump-header "${HOME_HEADERS}" --output "${HOME_BODY}" "${BASE_URL}/"
+HOME_STATUS="$(curl --silent --show-error --max-time 10 \
+  --dump-header "${HOME_HEADERS}" \
+  --output "${HOME_BODY}" \
+  --write-out '%{http_code}' \
+  "${BASE_URL}/")"
+test "${HOME_STATUS}" = "200"
 grep -qi '^content-security-policy:' "${HOME_HEADERS}"
 grep -qi '^x-content-type-options: nosniff' "${HOME_HEADERS}"
 if grep -qi '^x-powered-by:' "${HOME_HEADERS}"; then
