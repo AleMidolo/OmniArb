@@ -26,6 +26,67 @@ env:
   WRANGLER_VERSION: 4.80.0
 
 jobs:
+  application-validate:
+    name: Application lint, typecheck, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  browser-validate:
+    name: Application Playwright (desktop + mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-gate-playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   worker-validate:
     name: vinext check, build, Worker smoke
     runs-on: ubuntu-latest
@@ -89,7 +150,10 @@ jobs:
   deploy-main:
     name: Deploy stable PRE_LAUNCH Worker
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: worker-validate
+    needs:
+      - application-validate
+      - browser-validate
+      - worker-validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: pre-launch
@@ -136,7 +200,10 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    needs: worker-validate
+    needs:
+      - application-validate
+      - browser-validate
+      - worker-validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: pre-launch
