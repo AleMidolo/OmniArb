@@ -1,0 +1,84 @@
+name: QA Hosted Cloudflare Preview
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: qa-hosted-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  hosted-browser-qa:
+    name: Hosted Playwright (desktop + mobile)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PLAYWRIGHT_BASE_URL: https://pr-${{ github.event.pull_request.number }}-omniarb-prelaunch.alemidolo.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for exact-head Cloudflare deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          status=""
+          conclusion=""
+
+          for _ in $(seq 1 60); do
+            run_id="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/cloudflare.yml/runs?event=pull_request&head_sha=${GITHUB_SHA}&per_page=20" \
+              --jq '.workflow_runs[0].id // empty')"
+
+            if [[ -n "${run_id}" ]]; then
+              status="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.status')"
+              conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.conclusion // empty')"
+              echo "Cloudflare run ${run_id}: status=${status} conclusion=${conclusion:-pending}"
+
+              if [[ "${status}" == "completed" ]]; then
+                test "${conclusion}" = "success"
+                break
+              fi
+            fi
+
+            sleep 5
+          done
+
+          test -n "${run_id}"
+          test "${status}" = "completed"
+          test "${conclusion}" = "success"
+
+      - name: Verify hosted preview is reachable
+        run: curl --fail --silent --show-error --max-time 20 "${PLAYWRIGHT_BASE_URL}/" >/dev/null
+
+      - name: Run hosted browser acceptance tests
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-hosted-playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
