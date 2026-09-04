@@ -8,6 +8,7 @@ export default defineConfig({
     cloudflare({
       configPath: "./wrangler.jsonc",
       config: {
+        compatibility_flags: ["nodejs_compat", "global_fetch_strictly_public"],
         workers_dev: true,
         preview_urls: true,
         vars: {
