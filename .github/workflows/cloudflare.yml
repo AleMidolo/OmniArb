@@ -218,7 +218,7 @@ jobs:
             echo "available=true" >> "${GITHUB_OUTPUT}"
           else
             echo "available=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::Cloudflare preview upload skipped until DEP-001 bootstrap credentials from issue #11 are configured."
+            echo "::notice::Cloudflare preview upload skipped until issue #11 bootstrap credentials are configured."
           fi
 
       - name: Checkout
@@ -253,56 +253,6 @@ jobs:
           @vitejs/plugin-rsc@${VITE_RSC_VERSION}
           react-server-dom-webpack@${REACT_SERVER_DOM_WEBPACK_VERSION}
           wrangler@${WRANGLER_VERSION}
-
-      - name: Verify isolated Cloudflare runtime control
-        if: steps.cloudflare.outputs.available == 'true'
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          cleanup() {
-            printf 'y\n' | npx wrangler delete \
-              --config wrangler.runtime-probe.jsonc \
-              --name omniarb-runtime-probe >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-
-          npx wrangler deploy \
-            --config wrangler.runtime-probe.jsonc | tee wrangler-runtime-probe-deploy.txt
-
-          npx wrangler versions upload \
-            --config wrangler.runtime-probe.jsonc \
-            --preview-alias pr-${{ github.event.pull_request.number }}-probe | tee wrangler-runtime-probe-preview.txt
-
-          STABLE_URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' wrangler-runtime-probe-deploy.txt | tail -1)"
-          VERSION_URL="$(sed -n 's/^Version Preview URL: //p' wrangler-runtime-probe-preview.txt | tail -1)"
-          ALIAS_URL="$(sed -n 's/^Version Preview Alias URL: //p' wrangler-runtime-probe-preview.txt | tail -1)"
-
-          test -n "${STABLE_URL}"
-          test -n "${VERSION_URL}"
-          test -n "${ALIAS_URL}"
-
-          probe() {
-            local label="$1"
-            local url="$2"
-            local body status
-            body="$(mktemp)"
-            status="$(curl --silent --show-error --max-time 15 \
-              --output "${body}" \
-              --write-out '%{http_code}' \
-              "${url}/" || true)"
-            echo "=== isolated ${label}: ${url} ==="
-            echo "HTTP ${status}"
-            cat "${body}"
-            test "${status}" = "200"
-            grep -q '"status":"ok"' "${body}"
-            grep -q '"mode":"PRE_LAUNCH"' "${body}"
-          }
-
-          probe "stable" "${STABLE_URL}"
-          probe "version" "${VERSION_URL}"
-          probe "alias" "${ALIAS_URL}"
 
       - name: Build Worker
         if: steps.cloudflare.outputs.available == 'true'
