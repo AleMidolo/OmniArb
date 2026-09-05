@@ -19,11 +19,11 @@ env:
   NPM_VERSION: 11.19.1
   VINEXT_VERSION: 1.0.0-beta.9
   VINEXT_CLOUDFLARE_VERSION: 1.0.0-beta.7
-  CLOUDFLARE_VITE_PLUGIN_VERSION: 1.31.0
-  VITE_VERSION: 8.0.0
+  CLOUDFLARE_VITE_PLUGIN_VERSION: 1.54.3
+  VITE_VERSION: 8.0.16
   VITE_RSC_VERSION: 0.5.34
   REACT_SERVER_DOM_WEBPACK_VERSION: 19.2.8
-  WRANGLER_VERSION: 4.80.0
+  WRANGLER_VERSION: 4.129.0
 
 jobs:
   application-validate:
@@ -142,7 +142,7 @@ jobs:
             cloudflare-toolchain-audit.md
           cat cloudflare-toolchain-audit.md
           echo "audit_status=${AUDIT_STATUS}" >> "${GITHUB_OUTPUT}"
-          node -e "const a=require('./cloudflare-toolchain-audit.json'); if ((a.metadata?.vulnerabilities?.critical ?? 0) > 0) process.exit(1)"
+          node -e "const a=require('./cloudflare-toolchain-audit.json'); const v=a.metadata?.vulnerabilities ?? {}; if ((v.critical ?? 0) > 0 || (v.high ?? 0) > 0) process.exit(1)"
 
       - name: Install pinned Cloudflare migration toolchain
         run: >-
