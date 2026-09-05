@@ -2,7 +2,7 @@
 
 **Priority:** P0  
 **Owner of WHAT:** Project Manager / Product Owner  
-**Status:** IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH; CLOUDFLARE PUBLICATION MIGRATION ACTIVE
+**Status:** COMPLETE — IMPLEMENTED, HOSTED QA ACCEPTED AND PUBLICLY RELEASED IN PRE_LAUNCH
 
 ---
 
@@ -149,6 +149,8 @@ Provider, consent model and event implementation belong to architecture/privacy 
 - seller/legal information before commercial launch;
 - legally reviewed final disclosure text before commercial launch.
 
+The absence of genuine screenshots did not block the honest M2 informational release because explanatory mockups/placeholders were explicitly accepted. PRE-001 remains an input for later real-evidence content refinement.
+
 ---
 
 ## 6. Acceptance criteria
@@ -209,12 +211,15 @@ Provider, consent model and event implementation belong to architecture/privacy 
 ## 10. Delivery record
 
 - Implemented via PR #9.
-- Independent QA passed on head `f2d1eadd460c2497715bfff5b38e627a1768130c`, including desktop/mobile Playwright coverage and verification of the `PRE_LAUNCH` commercial gate.
-- Architecture review passed on the same head.
-- Merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
-- Deployment architecture now targets Cloudflare Workers through vinext under ADR-010.
-- DEP-001 / issue #13 owns migration/runtime parity and GitHub-driven preview/main automation.
-- Release / DevOps issue #11 owns minimal Cloudflare bootstrap and stable publication after DEP-001 passes QA.
-- The Cloudflare migration must preserve accepted landing-page behavior; commercial activation remains blocked by M3–M6.
+- Independent application QA passed on head `f2d1eadd460c2497715bfff5b38e627a1768130c`, including desktop/mobile Playwright coverage and verification of the `PRE_LAUNCH` commercial gate.
+- Architecture review passed on the same application head.
+- PR #9 merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
+- Deployment architecture moved to Cloudflare Workers through vinext under ADR-010 / PR #14.
+- DEP-001 / PR #15 completed the Cloudflare runtime migration, automatic same-repository PR previews and stable `main` deployment after independent hosted QA and architecture PASS; it merged as `4f397af9dbc46e804ef1967c9ec7ef994d3adff4`.
+- REL-001 / PR #18 added exact-main post-deploy stable smoke verification and passed independent QA.
+- Release issue #11 verified stable publication on exact `main` SHA `659381a19068db5ba9da1528e42c080b53467155` and closed as completed.
+- Stable informational URL: `https://omniarb-prelaunch.alemidolo.workers.dev`.
+- Stable release verification confirmed `Prossimamente`, security headers, correct 404 behavior, and fail-closed `503 COMMERCIAL_DISABLED` + `Cache-Control: no-store` checkout behavior.
+- Commercial activation remains blocked by M3–M6 and explicit human commercial approval.
 
-**IMPLEMENTED AND QA ACCEPTED — PRE_LAUNCH; CLOUDFLARE RELEASE PENDING**
+**COMPLETE — PUBLIC PRE_LAUNCH RELEASE VERIFIED ON CLOUDFLARE WORKERS**
