@@ -2,8 +2,8 @@
 
 **Owner:** Project Manager / Product Owner  
 **Status:** Active  
-**Last triage:** 2026-09-03  
-**Current milestone:** M2 — Informational showcase MVP  
+**Last triage:** 2026-09-05  
+**Current milestone:** M3 — Commercial-readiness prerequisites  
 **Deployment mode:** `PRE_LAUNCH`
 
 ---
@@ -22,38 +22,47 @@
 
 ## 2. Delivery order
 
-### M2 informational application
+### Completed — M2 informational application and Cloudflare release
 
 The M2 product/application implementation was completed in PR #9, independently QA accepted, architecture reviewed, and merged to `main` as `626971d909f25f9812f90f6ab2dc3d875e3bece4`.
 
-| Order | ID | Work package | Priority | Owner | Status | Evidence |
-|---:|---|---|---:|---|---|---|
-| 1 | OMNI-002A | Application shell and server-side `PRE_LAUNCH` gate | P0 | Developer | COMPLETE | PR #9 / QA PASS |
-| 2 | OMNI-002B | Italian landing-page structure and conversion copy | P0 | Developer | COMPLETE | PR #9 / QA PASS |
-| 3 | OMNI-002C | Static illustrative surebet example | P0 | Developer | COMPLETE | PR #9 / QA PASS |
-| 4 | OMNI-002D | Telegram alert explanation, mockups and screenshot slots | P0 | Developer | COMPLETE | PR #9 / QA PASS; genuine assets remain PRE-001 input |
-| 5 | OMNI-002E | Pricing, trial, FAQ, eligibility and risk sections | P0 | Developer | COMPLETE | PR #9 / issue #10 verified fixed |
-| 6 | OMNI-002F | Responsive, accessibility and SEO hardening | P0 | Developer | COMPLETE | QA desktop/mobile browser PASS |
-| 7 | OMNI-002G | M2 automated checks and QA handoff | P0 | Developer / QA | COMPLETE | CI + Playwright PASS |
-| 8 | OMNI-007A | Privacy-safe analytics adapter, disabled by default | P1 | Developer | COMPLETE | PR #9 architecture review; remains disabled |
+The Cloudflare Workers migration completed in DEP-001 / PR #15 after hosted QA and architecture PASS, and REL-001 / PR #18 added an exact-main post-deploy smoke gate. Release issue #11 then verified and closed the public `PRE_LAUNCH` publication on exact `main` SHA `659381a19068db5ba9da1528e42c080b53467155`.
 
-### M2 Cloudflare migration and publication
+Stable informational URL:
 
-| Order | ID | Work package | Priority | Owner | Status | Blocks |
-|---:|---|---|---:|---|---|---|
-| 1 | DEP-001 / issue #13 | Migrate Next.js 16.3.4 to Cloudflare Workers using vinext; preserve PRE_LAUNCH behavior; add GitHub-driven main deploy + PR preview versions | P0 | Developer | READY FOR DEVELOPMENT after architecture migration PR merges | Cloudflare runtime QA and publication |
-| 2 | DEP-001-QA | Verify a real Cloudflare Worker preview, including `/`, not-found, security headers, browser coverage and checkout-gate bypass tests | P0 | QA | READY AFTER DEPENDENCY | issue #13 implementation |
-| 3 | REL-001 / issue #11 | Bootstrap Cloudflare account/`workers.dev`/least-privilege GitHub secrets and verify stable main + PR preview publication | P0 | Release / DevOps | BLOCKED — DEP-001 + minimal Cloudflare credential bootstrap | Public M2 publication |
+`https://omniarb-prelaunch.alemidolo.workers.dev`
 
-The deployment migration must not change accepted product behavior. It remains limited to the non-commercial `PRE_LAUNCH` site and must not enable Stripe billing, trial activation, Telegram commercial provisioning, email-provider integration or analytics collection.
+| ID | Work package | Priority | Owner | Status | Evidence |
+|---|---|---:|---|---|---|
+| OMNI-002A | Application shell and server-side `PRE_LAUNCH` gate | P0 | Developer | COMPLETE | PR #9 / QA PASS |
+| OMNI-002B | Italian landing-page structure and conversion copy | P0 | Developer | COMPLETE | PR #9 / QA PASS |
+| OMNI-002C | Static illustrative surebet example | P0 | Developer | COMPLETE | PR #9 / QA PASS |
+| OMNI-002D | Telegram alert explanation, mockups and screenshot slots | P0 | Developer | COMPLETE | PR #9 / QA PASS; genuine assets remain PRE-001 input |
+| OMNI-002E | Pricing, trial, FAQ, eligibility and risk sections | P0 | Developer | COMPLETE | PR #9 / issue #10 verified fixed |
+| OMNI-002F | Responsive, accessibility and SEO hardening | P0 | Developer | COMPLETE | QA desktop/mobile browser PASS |
+| OMNI-002G | M2 automated checks and QA handoff | P0 | Developer / QA | COMPLETE | CI + Playwright PASS |
+| OMNI-007A | Privacy-safe analytics adapter, disabled by default | P1 | Developer | COMPLETE | Architecture review; remains disabled |
+| DEP-001 / #13 | Cloudflare Workers/vinext migration, PR previews and stable main deploy | P0 | Developer | COMPLETE | PR #15; hosted QA + architecture PASS |
+| DEP-001-QA | Real Cloudflare Worker preview verification | P0 | QA | COMPLETE | Hosted 10/10 Playwright + smoke PASS |
+| REL-001 / #11/#18 | Bootstrap Cloudflare, publish stable main and verify exact-main release | P0 | Release / DevOps | COMPLETE | Issue #11 closed; PR #18 QA PASS; exact-main smoke PASS |
 
-### Parallel product-owner/external inputs
+The informational release remains strictly non-commercial. `OMNIARB_MODE=PRE_LAUNCH`, `Prossimamente`, fail-closed checkout and disabled commercial integrations remain mandatory until M6.
+
+### Current unblocked engineering work
 
 | ID | Work package | Priority | Owner | Status | Blocks |
 |---|---|---:|---|---|---|
-| PRE-001 | Supply approved anonymized bot screenshots and representative alert/coverage examples | P0 | Product Owner | BLOCKED — INPUT REQUIRED | Final real-evidence content freeze; honest mockups already accepted for M2 |
-| PRE-002 | Define seller identity, support email, Italy-only rule and age/compliance requirements; obtain reviewed Italian legal/privacy/customer copy | P0 | Product Owner / Legal | BLOCKED — DECISION/REVIEW REQUIRED | Commercial launch |
-| PRE-003 | Verify the existing Telegram service can link, provision and revoke access idempotently by numeric Telegram ID; document authenticated integration and manual fallback | P0 | Architect / External service owner | BLOCKED — CAPABILITY VERIFICATION REQUIRED | OMNI-003–005 |
+| SEC-001 / issue #17 | Harden Cloudflare CI/deployment supply chain: audit ephemeral vinext toolchain, address/accept findings, pin GitHub Actions immutably where practical, confirm scanning and least privilege | P1 now / P0 before M6 | Developer / Release-DevOps; Architect review | READY FOR DEVELOPMENT | Commercial security acceptance gate |
+
+SEC-001 is the highest-priority currently unblocked autonomous engineering work. It must preserve the validated deployment DAG and `PRE_LAUNCH` safety boundary.
+
+### Parallel product-owner/external inputs — M3 blockers
+
+| ID | Work package | Priority | Owner | Status | Blocks |
+|---|---|---:|---|---|---|
+| PRE-001 / #4 | Supply approved anonymized bot screenshots and representative alert/coverage examples | P0 content input | Product Owner | BLOCKED — INPUT REQUIRED | Final real-evidence content freeze; honest mockups already accepted for M2 |
+| PRE-002 / #6 | Define seller identity, support email, Italy-only rule and age/compliance requirements; obtain reviewed Italian legal/privacy/customer copy | P0 | Product Owner / Legal | BLOCKED — DECISION/REVIEW REQUIRED | OMNI-003, OMNI-004, OMNI-006C, OMNI-008 |
+| PRE-003 / #7 | Verify existing Telegram linking/provisioning/revocation contract, availability signal, retries and manual fallback | P0 | Architect / External service owner | BLOCKED — CAPABILITY VERIFICATION REQUIRED | OMNI-003 through OMNI-005 and commercial launch |
 | PRE-004 | Select/configure transactional email and privacy-approved analytics/consent rules | P1 | Product Owner / Architect / Privacy review | BLOCKED — DECISION/REVIEW REQUIRED | Commercial communications and enabled analytics |
 
 ### Later — commercial implementation
@@ -69,9 +78,9 @@ The deployment migration must not change accepted product behavior. It remains l
 
 ---
 
-## 3. M2 acceptance record
+## 3. M2 acceptance and release record
 
-Independent QA verified the product/application implementation against the approved M2 acceptance criteria, including:
+Independent QA verified the application against the approved M2 acceptance criteria, including:
 
 - Italian-only visible content and correct service boundaries;
 - the illustrative surebet calculation and execution-risk disclosure;
@@ -82,28 +91,35 @@ Independent QA verified the product/application implementation against the appro
 - desktop and Pixel 7 mobile Playwright coverage;
 - keyboard operation, focus/skip-link behavior, reduced-motion handling, horizontal-overflow checks, console/runtime-error checks and image alternatives.
 
-Issue #10 was verified fixed. The architecture gate also passed. These results remain the behavioral baseline during the Cloudflare migration; Cloudflare runtime parity still requires independent QA before M2 publication is complete.
+The Cloudflare migration then independently verified the same behavior on a real hosted Worker preview. Final release verification on the stable Worker confirmed:
+
+- homepage reachable at `https://omniarb-prelaunch.alemidolo.workers.dev`;
+- expected security headers and no `X-Powered-By`;
+- correct unknown-route behavior;
+- `POST /api/checkout/setup` remains `503 COMMERCIAL_DISABLED` with `Cache-Control: no-store`;
+- exact-main Cloudflare deploy completed successfully before post-deploy smoke ran.
+
+Issue #10 and deployment defect #16 are closed. Issues #13 and #11 are closed as completed. M2 is complete.
 
 ---
 
-## 4. Cloudflare deployment architecture acceptance
+## 4. SEC-001 acceptance direction
 
-DEP-001 is ready only under ADR-010 and must satisfy all of the following:
+Issue #17 is ready under the existing architecture/security contracts and must satisfy its repository acceptance criteria without weakening release behavior.
 
-- run and record `npx vinext check` against the exact repository;
-- preserve existing Next.js lint/typecheck/unit/build/Playwright validation;
-- add a successful vinext production build and local Worker-runtime tests;
-- explicitly configure `OMNIARB_MODE=PRE_LAUNCH`, `workers_dev=true` and `preview_urls=true`;
-- preserve `/api/checkout/setup` PRE_LAUNCH `503 COMMERCIAL_DISABLED` + `Cache-Control: no-store` behavior;
-- preserve current security headers and unknown-route behavior;
-- deploy `main` automatically only after CI succeeds;
-- upload same-repository PR Worker versions only after CI succeeds and assign `pr-<number>` preview aliases;
-- never expose Cloudflare GitHub secrets to fork/untrusted PR execution;
-- use only `CLOUDFLARE_ACCOUNT_ID` and least-privilege `CLOUDFLARE_API_TOKEN` for deployment;
-- record Worker bundle/free-tier compatibility evidence;
-- keep all commercial/provider integrations disabled.
+At minimum:
 
-A concrete vinext incompatibility that breaks required behavior returns to the Architect. It must not be hidden by deleting server-side behavior or silently changing product scope.
+- persist a detailed audit of the exact ephemeral vinext/Cloudflare toolchain findings;
+- upgrade/pin compatible fixed versions where available, or record an explicit time-bounded risk acceptance for remaining findings;
+- ensure no unaccepted high/critical deployment or application dependency finding remains before M6;
+- replace mutable GitHub Action major tags with immutable full commit SHAs where practical, with readable version comments;
+- add or confirm dependency and secret scanning appropriate to the repository;
+- preserve least-privilege Cloudflare token scope and fork/untrusted-PR secret isolation;
+- preserve CI → browser validation → Worker validation → deployment ordering;
+- re-run normal CI, Cloudflare validation, hosted preview QA and stable smoke as appropriate after hardening;
+- keep `OMNIARB_MODE=PRE_LAUNCH` and all commercial integrations disabled.
+
+Architecture review is required before accepting changes that alter the deployment/security contract.
 
 ---
 
@@ -123,10 +139,10 @@ No developer should invent these outcomes:
 
 ## 6. Current workflow handoff
 
-The highest-priority ready work is **Developer — DEP-001 / issue #13**.
+M2 is publicly released and complete. No further informational deployment work is pending.
 
-After the Cloudflare implementation is published in a PR, QA owns independent Worker-preview verification. Once that passes and the migration merges, Release / DevOps owns issue #11 to complete minimal Cloudflare account/API-token bootstrap and verify stable `main` publication plus preview automation.
+PRE-002 and PRE-003 are higher-severity commercial blockers but are not currently autonomously implementable because they depend on legal/product-owner and external Telegram-service inputs. The highest-priority **unblocked** engineering task is SEC-001 / issue #17.
 
-Commercial implementation remains blocked by PRE-002 and PRE-003 at minimum. The Developer must not begin OMNI-003 through OMNI-005 merely because the deployment migration is active.
+Commercial implementation OMNI-003 through OMNI-005 must remain blocked until the stated M3 prerequisites are actually satisfied.
 
-**CURRENT HANDOFF: DEVELOPER — ISSUE #13 / DEP-001.**
+**CURRENT HANDOFF: DEVELOPER — ISSUE #17 / SEC-001.**
