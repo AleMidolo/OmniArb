@@ -6,16 +6,14 @@ const workflowFiles = readdirSync(workflowDir)
   .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
   .sort();
 
-const remoteUsePattern = /^\s*uses:\s*([^\s#]+)\s*(?:#.*)?$/gm;
+const remoteUsePattern = /^\s*(?:-\s*)?uses:\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))\s*(?:#.*)?$/gm;
 const fullCommitShaPattern = /^[0-9a-f]{40}$/i;
-const violations = [];
 
-for (const file of workflowFiles) {
-  const path = join(workflowDir, file);
-  const source = readFileSync(path, "utf8");
+export function findActionPinViolations(source, path = "workflow.yml") {
+  const violations = [];
 
   for (const match of source.matchAll(remoteUsePattern)) {
-    const reference = match[1];
+    const reference = match[1] ?? match[2] ?? match[3];
     if (reference.startsWith("./") || reference.startsWith("docker://")) continue;
 
     const at = reference.lastIndexOf("@");
@@ -25,6 +23,16 @@ for (const file of workflowFiles) {
       violations.push(`${path}:${line}: ${reference}`);
     }
   }
+
+  return violations;
+}
+
+const violations = [];
+
+for (const file of workflowFiles) {
+  const path = join(workflowDir, file);
+  const source = readFileSync(path, "utf8");
+  violations.push(...findActionPinViolations(source, path));
 }
 
 if (violations.length > 0) {
